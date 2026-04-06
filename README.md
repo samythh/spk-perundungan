@@ -44,6 +44,7 @@ npm install
 # 3. Buat file konfigurasi environment
 # Salin file .env.example menjadi .env, lalu sesuaikan URL database-nya:
 # DATABASE_URL="mysql://root:@localhost:3306/spk_perundungan"
+# JWT_SECRET="rahasia_super_spk_sman2_padang_2026"
 
 # 4. Lakukan migrasi tabel ke database MySQL
 npx prisma migrate dev --name init
