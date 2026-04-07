@@ -5,8 +5,10 @@ generator client {
 }
 
 datasource db {
-  provider = ""postgresql"" // Pastikan sesuai dengan database Anda (mysql)
-  url      = env("DATABASE_URL")
+  // PERBAIKAN: Tanda kutip ganda yang berlebih sudah dihapus. Cukup gunakan satu pasang tanda kutip.
+  provider  = "postgresql" 
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -25,7 +27,7 @@ model Kriteria {
   sifat      String
   bobot      Float?   @default(0)
   
-  // PERBAIKAN: Menyiapkan "kantong" relasi timbal balik untuk Nilai
+  // Menyiapkan "kantong" relasi timbal balik untuk Nilai
   nilai      Nilai[]  
 }
 
@@ -38,7 +40,7 @@ model Siswa {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // PERBAIKAN: Menyiapkan "kantong" relasi timbal balik untuk Nilai
+  // Menyiapkan "kantong" relasi timbal balik untuk Nilai
   nilai     Nilai[]  
 }
 
