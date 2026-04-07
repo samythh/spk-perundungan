@@ -248,7 +248,7 @@ export default function MasterAdminPage() {
                      />
                   </div>
                   <div>
-                     <label className="block text-xs font-bold text-slate-700 mb-1 flex justify-between">
+                     <label className="text-xs font-bold text-slate-700 mb-1 flex justify-between">
                         <span>Password Akses</span>
                         {editId && <span className="text-[10px] text-slate-400 font-normal">*Kosongkan jika tidak diubah</span>}
                      </label>
