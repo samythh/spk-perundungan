@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Shield, UserPlus, Trash2, RefreshCw, KeyRound, AlertCircle } from "lucide-react";
+// PERBAIKAN: Menambahkan ikon Edit, Eye, dan EyeOff
+import { Shield, UserPlus, Trash2, RefreshCw, KeyRound, AlertCircle, Edit, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// PERBAIKAN 1: Menghapus DialogFooter dari daftar impor karena tidak terpakai
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface User {
@@ -21,6 +21,10 @@ export default function MasterAdminPage() {
    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
    const [formData, setFormData] = useState({ username: '', password: '', nama: '', role: 'GURU_BK' });
    const [isSubmitting, setIsSubmitting] = useState(false);
+
+   // STATE BARU: Untuk melacak mode Edit dan status Hide/Unhide Password
+   const [editId, setEditId] = useState<number | null>(null);
+   const [showPassword, setShowPassword] = useState(false);
 
    const fetchUsers = useCallback(async () => {
       setIsLoading(true);
@@ -48,9 +52,14 @@ export default function MasterAdminPage() {
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsSubmitting(true);
+
+      // LOGIKA CERDAS: Menentukan URL dan Method berdasarkan mode (Tambah atau Edit)
+      const url = editId ? `http://localhost:8000/api/users/${editId}` : "http://localhost:8000/api/users";
+      const method = editId ? "PUT" : "POST";
+
       try {
-         const res = await fetch("http://localhost:8000/api/users", {
-            method: "POST",
+         const res = await fetch(url, {
+            method: method,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(formData)
          });
@@ -58,12 +67,12 @@ export default function MasterAdminPage() {
          if (json.success) {
             setIsAddModalOpen(false);
             setFormData({ username: '', password: '', nama: '', role: 'GURU_BK' });
+            setEditId(null);
             fetchUsers();
          } else {
             alert(json.message);
          }
       } catch (error) {
-         // PERBAIKAN 2: Variabel 'error' kini digunakan untuk log di konsol browser
          console.error("Error saat submit data pengguna:", error);
          alert("Terjadi kesalahan jaringan.");
       } finally {
@@ -84,10 +93,22 @@ export default function MasterAdminPage() {
             alert(json.message);
          }
       } catch (error) {
-         // PERBAIKAN 3: Variabel 'error' kini digunakan untuk log di konsol browser
          console.error("Error saat menghapus pengguna:", error);
          alert("Gagal menghapus pengguna.");
       }
+   };
+
+   // FUNGSI BARU: Untuk memicu form modal dalam mode Edit
+   const openEditModal = (user: User) => {
+      setEditId(user.id);
+      setFormData({
+         username: user.username,
+         password: '', // Kosongkan password agar admin tidak melihat hash, dan tidak wajib diisi
+         nama: user.nama,
+         role: user.role
+      });
+      setShowPassword(false);
+      setIsAddModalOpen(true);
    };
 
    return (
@@ -101,7 +122,15 @@ export default function MasterAdminPage() {
                </h1>
                <p className="text-slate-500 text-sm mt-1">Kelola hak akses, tambahkan staf baru, atau cabut otorisasi akun dari sistem.</p>
             </div>
-            <Button onClick={() => setIsAddModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-md">
+            <Button
+               onClick={() => {
+                  setEditId(null);
+                  setFormData({ username: '', password: '', nama: '', role: 'GURU_BK' });
+                  setShowPassword(false);
+                  setIsAddModalOpen(true);
+               }}
+               className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-md"
+            >
                <UserPlus size={16} /> Terbitkan Akun Baru
             </Button>
          </div>
@@ -135,7 +164,7 @@ export default function MasterAdminPage() {
                            <th className="py-3 px-4 font-bold text-xs">Nama Lengkap</th>
                            <th className="py-3 px-4 font-bold text-xs">Username</th>
                            <th className="py-3 px-4 font-bold text-center text-xs">Level Otorisasi</th>
-                           <th className="py-3 px-4 font-bold text-center text-xs w-28">Tindakan</th>
+                           <th className="py-3 px-4 font-bold text-center text-xs w-32">Tindakan</th>
                         </tr>
                      </thead>
                      <tbody>
@@ -153,15 +182,25 @@ export default function MasterAdminPage() {
                                  </span>
                               </td>
                               <td className="py-3 px-4 text-center">
-                                 {u.role !== 'ADMIN' && (
+                                 {/* Tombol Edit dan Hapus disejajarkan menggunakan flex */}
+                                 <div className="flex justify-center gap-2">
                                     <button
-                                       onClick={() => handleDelete(u.id, u.nama)}
-                                       className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                                       title="Hapus Akun"
+                                       onClick={() => openEditModal(u)}
+                                       className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                                       title="Edit Akun"
                                     >
-                                       <Trash2 size={16} />
+                                       <Edit size={16} />
                                     </button>
-                                 )}
+                                    {u.role !== 'ADMIN' && (
+                                       <button
+                                          onClick={() => handleDelete(u.id, u.nama)}
+                                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                          title="Hapus Akun"
+                                       >
+                                          <Trash2 size={16} />
+                                       </button>
+                                    )}
+                                 </div>
                               </td>
                            </tr>
                         ))}
@@ -175,10 +214,11 @@ export default function MasterAdminPage() {
             <DialogContent className="sm:max-w-md">
                <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 text-xl">
-                     <UserPlus className="text-indigo-600" size={24} /> Terbitkan Akun Baru
+                     {editId ? <Edit className="text-indigo-600" size={24} /> : <UserPlus className="text-indigo-600" size={24} />}
+                     {editId ? "Edit Akun Pengguna" : "Terbitkan Akun Baru"}
                   </DialogTitle>
                   <DialogDescription>
-                     Lengkapi formulir di bawah untuk memberikan akses sistem kepada staf baru.
+                     {editId ? "Perbarui informasi staf di bawah ini." : "Lengkapi formulir di bawah untuk memberikan akses sistem kepada staf baru."}
                   </DialogDescription>
                </DialogHeader>
 
@@ -208,16 +248,31 @@ export default function MasterAdminPage() {
                      />
                   </div>
                   <div>
-                     <label className="block text-xs font-bold text-slate-700 mb-1">Password Sementara</label>
-                     <input
-                        type="password"
-                        name="password"
-                        required
-                        className="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm font-mono"
-                        placeholder="Minimal 6 karakter"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                     />
+                     <label className="text-xs font-bold text-slate-700 mb-1 flex justify-between">
+                        <span>Password Akses</span>
+                        {editId && <span className="text-[10px] text-slate-400 font-normal">*Kosongkan jika tidak diubah</span>}
+                     </label>
+                     {/* INPUT PASSWORD DENGAN FITUR HIDE/UNHIDE */}
+                     <div className="relative">
+                        <input
+                           type={showPassword ? "text" : "password"}
+                           name="password"
+                           // Hanya wajib diisi jika membuat akun baru (editId = null)
+                           required={!editId}
+                           className="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm font-mono pr-10"
+                           placeholder={editId ? "Ketik sandi baru untuk mereset..." : "Minimal 6 karakter"}
+                           value={formData.password}
+                           onChange={handleInputChange}
+                        />
+                        <button
+                           type="button"
+                           onClick={() => setShowPassword(!showPassword)}
+                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                           title={showPassword ? "Sembunyikan Sandi" : "Tampilkan Sandi"}
+                        >
+                           {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                     </div>
                   </div>
                   <div>
                      <label className="block text-xs font-bold text-slate-700 mb-1">Level Otorisasi</label>
@@ -235,8 +290,8 @@ export default function MasterAdminPage() {
 
                   <div className="pt-4 flex justify-end gap-2 border-t mt-6">
                      <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>Batal</Button>
-                     <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isSubmitting}>
-                        {isSubmitting ? "Menyimpan..." : "Simpan & Terbitkan"}
+                     <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white" disabled={isSubmitting}>
+                        {isSubmitting ? "Menyimpan..." : (editId ? "Simpan Perubahan" : "Simpan & Terbitkan")}
                      </Button>
                   </div>
                </form>
