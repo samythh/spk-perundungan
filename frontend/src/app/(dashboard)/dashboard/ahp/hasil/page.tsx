@@ -106,7 +106,7 @@ export default function HasilPenilaianPage() {
    const fetchData = useCallback(async () => {
       setIsLoading(true);
       try {
-         const res = await fetch("http://localhost:8000/api/penilaian/data");
+         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/penilaian/data");
          const json = await res.json();
          if (json.success) {
             setSiswa(json.data.siswa);
@@ -164,7 +164,7 @@ export default function HasilPenilaianPage() {
       }
 
       try {
-         const res = await fetch("http://localhost:8000/api/penilaian/simpan", {
+         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/penilaian/simpan", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ scores: payload })

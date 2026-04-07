@@ -13,25 +13,25 @@ interface KriteriaItem {
 }
 
 async function getKriteria() {
-  const res = await fetch('http://localhost:8000/api/kriteria', { cache: 'no-store' });
-  
+  const res = await fetch('process.env.NEXT_PUBLIC_API_URL/api/kriteria', { cache: 'no-store' });
+
   if (!res.ok) {
     throw new Error('Gagal mengambil data kriteria dari backend');
   }
-  
+
   return res.json();
 }
 
 export default async function Home() {
   const response = await getKriteria();
-  
+
   // Mengarahkan response.data ke array dari interface KriteriaItem
   const kriteriaList: KriteriaItem[] = response.data;
 
   return (
     <main className="min-h-screen bg-zinc-50 p-4 md:p-10 font-sans">
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-zinc-200">
-        
+
         <h1 className="text-3xl font-bold text-zinc-900 mb-2">
           Sistem Pendukung Keputusan AHP
         </h1>
@@ -50,12 +50,12 @@ export default async function Home() {
             <span className="w-2 h-2 rounded-full bg-green-500"></span>
             Status Koneksi: Terhubung ke Database MySQL
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* MENGATASI ERROR: Mengganti 'any' dengan tipe data KriteriaItem yang sah */}
             {kriteriaList.map((kriteria: KriteriaItem) => (
-              <div 
-                key={kriteria.kode} 
+              <div
+                key={kriteria.kode}
                 className="p-5 border border-zinc-200 rounded-lg hover:border-zinc-300 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-2">

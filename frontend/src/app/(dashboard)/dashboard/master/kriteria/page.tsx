@@ -28,7 +28,7 @@ export default function DataKriteriaPage() {
    useEffect(() => {
       const fetchKriteria = async () => {
          try {
-            const response = await fetch("http://localhost:8000/api/kriteria");
+            const response = await fetch("process.env.NEXT_PUBLIC_API_URL/api/kriteria");
             const data = await response.json();
             if (data.success) setKriteria(data.data);
          } catch (error) {
@@ -76,8 +76,8 @@ export default function DataKriteriaPage() {
                         <TableCell className="text-slate-500 text-sm hidden md:table-cell">{item.keterangan}</TableCell>
                         <TableCell className="text-center">
                            <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${item.sifat === 'Cost'
-                                 ? 'bg-red-50 text-red-600 border border-red-100'
-                                 : 'bg-green-50 text-green-600 border border-green-100'
+                              ? 'bg-red-50 text-red-600 border border-red-100'
+                              : 'bg-green-50 text-green-600 border border-green-100'
                               }`}>
                               {item.sifat}
                            </span>

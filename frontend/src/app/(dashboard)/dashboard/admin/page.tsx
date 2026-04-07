@@ -29,7 +29,7 @@ export default function MasterAdminPage() {
    const fetchUsers = useCallback(async () => {
       setIsLoading(true);
       try {
-         const res = await fetch("http://localhost:8000/api/users");
+         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/users");
          const json = await res.json();
          if (json.success) {
             setUsers(json.data);
@@ -54,7 +54,7 @@ export default function MasterAdminPage() {
       setIsSubmitting(true);
 
       // LOGIKA CERDAS: Menentukan URL dan Method berdasarkan mode (Tambah atau Edit)
-      const url = editId ? `http://localhost:8000/api/users/${editId}` : "http://localhost:8000/api/users";
+      const url = editId ? `process.env.NEXT_PUBLIC_API_URL/api/users/${editId}` : "process.env.NEXT_PUBLIC_API_URL/api/users";
       const method = editId ? "PUT" : "POST";
 
       try {
@@ -85,7 +85,7 @@ export default function MasterAdminPage() {
       if (!isConfirmed) return;
 
       try {
-         const res = await fetch(`http://localhost:8000/api/users/${id}`, { method: "DELETE" });
+         const res = await fetch(`process.env.NEXT_PUBLIC_API_URL/api/users/${id}`, { method: "DELETE" });
          const json = await res.json();
          if (json.success) {
             fetchUsers();

@@ -82,7 +82,7 @@ export default function DashboardPage() {
    const fetchData = useCallback(async () => {
       setIsLoading(true);
       try {
-         const res = await fetch("http://localhost:8000/api/penilaian/data");
+         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/penilaian/data");
          const json = await res.json();
          if (json.success) {
             setSiswa(json.data.siswa);

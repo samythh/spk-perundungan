@@ -29,7 +29,7 @@ export default function AlternatifPage() {
 
    const fetchSiswa = async () => {
       try {
-         const res = await fetch("http://localhost:8000/api/siswa");
+         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/siswa");
          const json = await res.json();
          if (json.success) setSiswa(json.data);
       } catch (error) {
@@ -46,7 +46,7 @@ export default function AlternatifPage() {
 
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      const url = editId ? `http://localhost:8000/api/siswa/${editId}` : "http://localhost:8000/api/siswa";
+      const url = editId ? `process.env.NEXT_PUBLIC_API_URL/api/siswa/${editId}` : "process.env.NEXT_PUBLIC_API_URL/api/siswa";
       const method = editId ? "PUT" : "POST";
 
       await fetch(url, {
@@ -63,7 +63,7 @@ export default function AlternatifPage() {
 
    const handleDelete = async (id: number) => {
       if (confirm("Yakin ingin menghapus siswa ini?")) {
-         await fetch(`http://localhost:8000/api/siswa/${id}`, { method: "DELETE" });
+         await fetch(`process.env.NEXT_PUBLIC_API_URL/api/siswa/${id}`, { method: "DELETE" });
          fetchSiswa();
       }
    };
@@ -126,7 +126,7 @@ export default function AlternatifPage() {
             try {
                // Mengirim semua data sekaligus menggunakan Promise.all
                await Promise.all(newStudents.map(student =>
-                  fetch("http://localhost:8000/api/siswa", {
+                  fetch("process.env.NEXT_PUBLIC_API_URL/api/siswa", {
                      method: "POST",
                      headers: { "Content-Type": "application/json" },
                      body: JSON.stringify(student)
