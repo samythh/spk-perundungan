@@ -13,6 +13,8 @@ interface KriteriaItem {
 }
 
 async function getKriteria() {
+  // PERBAIKAN FATAL: Mengganti tanda kutip tunggal (' ') dengan backtick (`) dan ${}
+  // Agar alamat Render.com bisa dibaca oleh sistem!
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`, { cache: 'no-store' });
 
   if (!res.ok) {
@@ -48,11 +50,10 @@ export default async function Home() {
         <div>
           <h2 className="text-xl font-semibold text-zinc-800 mb-4 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            Status Koneksi: Terhubung ke Database MySQL
+            Status Koneksi: Terhubung ke Database
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* MENGATASI ERROR: Mengganti 'any' dengan tipe data KriteriaItem yang sah */}
             {kriteriaList.map((kriteria: KriteriaItem) => (
               <div
                 key={kriteria.kode}
