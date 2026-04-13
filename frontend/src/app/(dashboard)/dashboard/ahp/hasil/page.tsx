@@ -106,7 +106,8 @@ export default function HasilPenilaianPage() {
    const fetchData = useCallback(async () => {
       setIsLoading(true);
       try {
-         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/penilaian/data");
+         // PERBAIKAN 1: Mengambil data penilaian dengan backtick (`) dan portal ${}
+         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penilaian/data`);
          const json = await res.json();
          if (json.success) {
             setSiswa(json.data.siswa);
@@ -164,7 +165,8 @@ export default function HasilPenilaianPage() {
       }
 
       try {
-         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/penilaian/simpan", {
+         // PERBAIKAN 2: Menyimpan data penilaian dengan backtick (`) dan portal ${}
+         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penilaian/simpan`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ scores: payload })
@@ -216,7 +218,6 @@ export default function HasilPenilaianPage() {
       </tr>
     `).join('');
 
-      // PERBAIKAN: Mengubah struktur redaksi kalimat dan tata letak area tanda tangan
       const htmlContent = `
       <html>
         <head>
@@ -239,7 +240,6 @@ export default function HasilPenilaianPage() {
             th { border: 1px solid #000; padding: 12px; background-color: #f0f0f0 !important; font-weight: bold; text-align: center; }
             td { border: 1px solid #000; padding: 10px; }
             
-            /* KODE BARU: Struktur Flexbox untuk menyusun dua tanda tangan sejajar */
             .ttd-container { width: 100%; margin-top: 50px; display: flex; justify-content: space-between; padding: 0 20px; }
             .ttd-box { width: 280px; text-align: center; font-size: 14px; }
             .ttd-box p { margin: 0; }

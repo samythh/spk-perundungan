@@ -75,7 +75,8 @@ export default function PerbandinganKriteriaPage() {
    useEffect(() => {
       const fetchKriteria = async () => {
          try {
-            const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/kriteria");
+            // PERBAIKAN 1: Mengambil kriteria (GET) dengan backtick (`) dan portal ${}
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`);
             const json = await res.json();
 
             if (json.success && json.data.length > 0) {
@@ -157,7 +158,8 @@ export default function PerbandinganKriteriaPage() {
 
    const handleSimpan = async () => {
       try {
-         const response = await fetch("process.env.NEXT_PUBLIC_API_URL/api/ahp/hitung-kriteria", {
+         // PERBAIKAN 2: Menyimpan dan menghitung AHP (POST) dengan backtick (`) dan portal ${}
+         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ahp/hitung-kriteria`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ matrix })

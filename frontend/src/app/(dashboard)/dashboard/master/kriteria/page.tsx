@@ -28,7 +28,9 @@ export default function DataKriteriaPage() {
    useEffect(() => {
       const fetchKriteria = async () => {
          try {
-            const response = await fetch("process.env.NEXT_PUBLIC_API_URL/api/kriteria");
+            // PERBAIKAN FATAL: Mengganti tanda kutip ganda (" ") dengan backtick (`) dan portal ${}
+            // Agar React mengonversinya menjadi URL Render.com yang asli
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`);
             const data = await response.json();
             if (data.success) setKriteria(data.data);
          } catch (error) {
