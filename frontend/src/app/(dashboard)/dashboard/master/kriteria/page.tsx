@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Ikon Plus, Edit, Trash2 dihapus karena tidak ada CRUD
+import { Database } from "lucide-react";
 import {
    Table,
    TableBody,
@@ -18,8 +18,16 @@ interface Kriteria {
    kode: string;
    nama: string;
    keterangan: string;
-   sifat: string;
+   bobot: number;
 }
+
+const subKriteriaData = [
+   { kode: "T1", nama: "Sangat Parah", eigen: 0.4162, bobot: 1.0000, color: "text-red-600 bg-red-50 border-red-200" },
+   { kode: "T2", nama: "Parah", eigen: 0.2618, bobot: 0.6290, color: "text-orange-600 bg-orange-50 border-orange-200" },
+   { kode: "T3", nama: "Sedang", eigen: 0.1610, bobot: 0.3868, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
+   { kode: "T4", nama: "Aman", eigen: 0.0986, bobot: 0.2369, color: "text-blue-600 bg-blue-50 border-blue-200" },
+   { kode: "T5", nama: "Sangat Aman", eigen: 0.0624, bobot: 0.1499, color: "text-green-600 bg-green-50 border-green-200" },
+];
 
 export default function DataKriteriaPage() {
    const [kriteria, setKriteria] = useState<Kriteria[]>([]);
@@ -28,8 +36,6 @@ export default function DataKriteriaPage() {
    useEffect(() => {
       const fetchKriteria = async () => {
          try {
-            // PERBAIKAN FATAL: Mengganti tanda kutip ganda (" ") dengan backtick (`) dan portal ${}
-            // Agar React mengonversinya menjadi URL Render.com yang asli
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`);
             const data = await response.json();
             if (data.success) setKriteria(data.data);
@@ -44,50 +50,92 @@ export default function DataKriteriaPage() {
 
    return (
       <div className="space-y-6">
-
-         {/* Header Halaman (Tombol Tambah dihapus sesuai instruksi dosen) */}
-         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+         {/* Header */}
+         <div className="flex items-center gap-3 pb-4 border-b">
+            <div className="p-2 bg-primary/10 rounded-lg">
+               <Database className="w-6 h-6 text-primary" />
+            </div>
             <div>
-               <h1 className="text-2xl font-bold text-slate-900">Data Kriteria</h1>
-               <p className="text-slate-500 text-sm mt-1 italic">
-                  * Kriteria bersifat tetap dan telah divalidasi untuk perhitungan AHP.
+               <h1 className="text-2xl font-bold tracking-tight">Master Data Kriteria</h1>
+               <p className="text-sm text-muted-foreground">
+                  Kelola parameter utama dan intensitas penilaian AHP Absolut.
                </p>
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <Table>
-               <TableHeader className="bg-slate-50 border-b border-slate-100">
-                  <TableRow>
-                     <TableHead className="font-bold text-slate-700 w-24 text-center">Kode</TableHead>
-                     <TableHead className="font-bold text-slate-700">Nama Kriteria</TableHead>
-                     <TableHead className="font-bold text-slate-700 hidden md:table-cell">Deskripsi</TableHead>
-                     <TableHead className="font-bold text-slate-700 text-center">Sifat</TableHead>
-                     {/* Kolom Aksi dihapus */}
-                  </TableRow>
-               </TableHeader>
-               <TableBody>
-                  {isLoading ? (
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Tabel Kriteria Utama */}
+            <div className="border rounded-lg bg-card">
+               <div className="p-4 border-b bg-muted/30">
+                  <h2 className="font-semibold text-card-foreground">1. Kriteria Utama</h2>
+               </div>
+               <Table>
+                  <TableHeader>
                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-10">Memuat data...</TableCell>
+                        <TableHead className="w-20 text-center">Kode</TableHead>
+                        <TableHead>Kriteria</TableHead>
+                        <TableHead className="text-right">Bobot Global</TableHead>
                      </TableRow>
-                  ) : kriteria.map((item) => (
-                     <TableRow key={item.id} className="hover:bg-slate-50/50">
-                        <TableCell className="font-bold text-center">{item.kode}</TableCell>
-                        <TableCell className="font-medium">{item.nama}</TableCell>
-                        <TableCell className="text-slate-500 text-sm hidden md:table-cell">{item.keterangan}</TableCell>
-                        <TableCell className="text-center">
-                           <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${item.sifat === 'Cost'
-                              ? 'bg-red-50 text-red-600 border border-red-100'
-                              : 'bg-green-50 text-green-600 border border-green-100'
-                              }`}>
-                              {item.sifat}
-                           </span>
-                        </TableCell>
+                  </TableHeader>
+                  <TableBody>
+                     {isLoading ? (
+                        <TableRow>
+                           <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                              Memuat data...
+                           </TableCell>
+                        </TableRow>
+                     ) : kriteria.map((item) => (
+                        <TableRow key={item.id}>
+                           <TableCell className="text-center font-medium">{item.kode}</TableCell>
+                           <TableCell>
+                              <div className="font-medium">{item.nama}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{item.keterangan}</div>
+                           </TableCell>
+                           <TableCell className="text-right font-mono">
+                              {item.bobot?.toFixed(4) || "0.0000"}
+                           </TableCell>
+                        </TableRow>
+                     ))}
+                  </TableBody>
+               </Table>
+            </div>
+
+            {/* Tabel Sub-Kriteria */}
+            <div className="border rounded-lg bg-card self-start">
+               <div className="p-4 border-b bg-muted/30">
+                  <h2 className="font-semibold text-card-foreground">2. Intensitas Risiko (Sub-Kriteria)</h2>
+               </div>
+               <Table>
+                  <TableHeader>
+                     <TableRow>
+                        <TableHead className="w-16 text-center">Kode</TableHead>
+                        <TableHead>Skala Kondisi</TableHead>
+                        <TableHead className="text-right">Nilai Eigen</TableHead>
+                        <TableHead className="text-right">Bobot Ideal</TableHead>
                      </TableRow>
-                  ))}
-               </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                     {subKriteriaData.map((sub) => (
+                        <TableRow key={sub.kode}>
+                           <TableCell className="text-center text-muted-foreground">{sub.kode}</TableCell>
+                           <TableCell>
+                              <span className={`px-2 py-1 text-[11px] font-medium border rounded-md ${sub.color}`}>
+                                 {sub.nama}
+                              </span>
+                           </TableCell>
+                           <TableCell className="text-right font-mono text-muted-foreground">
+                              {sub.eigen.toFixed(4)}
+                           </TableCell>
+                           <TableCell className="text-right font-mono font-medium">
+                              {sub.bobot.toFixed(4)}
+                           </TableCell>
+                        </TableRow>
+                     ))}
+                  </TableBody>
+               </Table>
+            </div>
+
          </div>
       </div>
    );

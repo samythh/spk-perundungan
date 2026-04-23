@@ -5,10 +5,13 @@ generator client {
 }
 
 datasource db {
-  // PERBAIKAN: Tanda kutip ganda yang berlebih sudah dihapus. Cukup gunakan satu pasang tanda kutip.
-  provider  = "postgresql" 
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider  = "postgresql"
+  
+  // 1. DATABASE URL (Jalur transaksi harian menggunakan Port 6543 dari klaster aws-1)
+  url       = "postgresql://postgres.ilulxcquruoctdbwxebu:SpkSman2Padang2026@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+  
+  // 2. DIRECT URL (Jalur khusus Prisma untuk membongkar tabel menggunakan Port 5432 dari klaster aws-1)
+  directUrl = "postgresql://postgres.ilulxcquruoctdbwxebu:SpkSman2Padang2026@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
 }
 
 model User {
@@ -19,40 +22,56 @@ model User {
   nama     String
 }
 
+// 2. KRITERIA AHP (Kriteria Utama)
 model Kriteria {
-  id         Int      @id @default(autoincrement())
-  kode       String   @unique
-  nama       String
-  keterangan String
-  sifat      String
-  bobot      Float?   @default(0)
+  kode       String  @id              // Contoh: C1, C2
+  nama       String                   // Nama kriteria (Sosiometri, dll)
+  keterangan String? @db.Text         // Deskripsi
+  bobot      Float   @default(0)      // Bobot Global (Eigenvector dari C)
   
-  // Menyiapkan "kantong" relasi timbal balik untuk Nilai
-  nilai      Nilai[]  
+  penilaian  Penilaian[]
 }
 
+// 3. SUB-KRITERIA (Tingkat Risiko T1-T5 sebagai standar ukur absolut)
+model SubKriteria {
+  kode        String  @id             // Contoh: T1, T2
+  nama_sub    String                  // Contoh: Sangat Parah, Aman
+  bobot_ideal Float                   // Bobot Idealisasi (Contoh: 1.0000, 0.6290)
+  keterangan  String? @db.Text
+  
+  penilaian   Penilaian[]
+}
+
+// 4. DATA SISWA (Alternatif)
 model Siswa {
-  id        Int      @id @default(autoincrement())
-  nisn      String   @unique
-  nama      String
-  kelas     String
-  gender    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  nisn        String   @unique
+  nama        String
+  kelas       String
+  gender      String
   
-  // Menyiapkan "kantong" relasi timbal balik untuk Nilai
-  nilai     Nilai[]  
+  // Tempat menyimpan rekam jejak hasil akhir SPK
+  nilai_akhir Float?   
+  kategori    String? 
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  penilaian   Penilaian[]
 }
 
-model Nilai {
-  id         Int      @id @default(autoincrement())
-  siswaId    Int
-  kriteriaId Int
-  skor       Float
-  
-  // Menghubungkan Nilai dengan Siswa dan Kriteria
-  siswa      Siswa    @relation(fields: [siswaId], references: [id], onDelete: Cascade)
-  kriteria   Kriteria @relation(fields: [kriteriaId], references: [id], onDelete: Cascade)
+// 5. PENILAIAN (Menggantikan pola angka murni)
+model Penilaian {
+  id               Int    @id @default(autoincrement())
+  siswa_id         Int
+  kriteria_kode    String
+  subkriteria_kode String
 
-  @@unique([siswaId, kriteriaId])
+  // Relasi ke tabel-tabel utama
+  siswa       Siswa       @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  kriteria    Kriteria    @relation(fields: [kriteria_kode], references: [kode], onDelete: Cascade)
+  subkriteria SubKriteria @relation(fields: [subkriteria_kode], references: [kode], onDelete: Cascade)
+
+  // Constraint: 1 siswa hanya bisa memiliki 1 kondisi (T) per kriteria (C)
+  @@unique([siswa_id, kriteria_kode]) 
 }
