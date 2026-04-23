@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Users, ListChecks, Activity, ShieldAlert, BarChart3, PieChart, TrendingUp, AlertTriangle } from "lucide-react";
 
+// 1. PENYESUAIAN INTERFACE: Menyelaraskan dengan skema AHP Absolut
 interface Siswa {
    id: number;
    nisn: string;
@@ -12,11 +13,15 @@ interface Siswa {
 }
 
 interface Kriteria {
-   id: number;
-   kode: string;
+   kode: string; // Menggunakan kode, bukan ID
    nama: string;
-   sifat: string;
    bobot: number;
+}
+
+interface SubKriteria {
+   kode: string;
+   nama_sub: string;
+   bobot_ideal: number;
 }
 
 interface HasilAkhir extends Siswa {
@@ -28,48 +33,47 @@ interface HasilAkhir extends Siswa {
 export default function DashboardPage() {
    const [siswa, setSiswa] = useState<Siswa[]>([]);
    const [kriteria, setKriteria] = useState<Kriteria[]>([]);
+   const [, setSubKriteria] = useState<SubKriteria[]>([]);
    const [hasilAkhir, setHasilAkhir] = useState<HasilAkhir[]>([]);
    const [isLoading, setIsLoading] = useState(true);
 
-   const kalkulasiHasil = useCallback((dataSiswa: Siswa[], dataKriteria: Kriteria[], dataScores: Record<number, Record<number, number>>) => {
-      const minMax: Record<number, { min: number; max: number }> = {};
-      dataKriteria.forEach(k => {
-         let max = -Infinity;
-         let min = Infinity;
-         dataSiswa.forEach(s => {
-            const val = dataScores[s.id]?.[k.id] || 0;
-            if (val > 0) {
-               if (val > max) max = val;
-               if (val < min) min = val;
-            }
-         });
-         minMax[k.id] = { min: min === Infinity ? 1 : min, max: max === -Infinity ? 1 : max };
-      });
-
+   // 2. ROMBAK TOTAL FUNGSI KALKULASI: Menggunakan WSM AHP Absolut
+   const kalkulasiHasil = useCallback((
+      dataSiswa: Siswa[],
+      dataKriteria: Kriteria[],
+      dataSubKriteria: SubKriteria[],
+      dataScores: Record<number, Record<string, string>>
+   ) => {
       const ranking: HasilAkhir[] = dataSiswa.map(s => {
          let totalSkor = 0;
+
+         // Kalikan Bobot Global Kriteria dengan Bobot Ideal Sub-Kriteria terpilih
          dataKriteria.forEach(k => {
-            const skorAsli = dataScores[s.id]?.[k.id] || 0;
-            let nilaiNormalisasi = 0;
-            if (skorAsli > 0) {
-               if (k.sifat === 'Benefit') {
-                  nilaiNormalisasi = skorAsli / minMax[k.id].max;
-               } else {
-                  nilaiNormalisasi = minMax[k.id].min / skorAsli;
+            const subKodeTerpilih = dataScores[s.id]?.[k.kode];
+            if (subKodeTerpilih) {
+               const subTerpilih = dataSubKriteria.find(sub => sub.kode === subKodeTerpilih);
+               if (subTerpilih) {
+                  totalSkor += (k.bobot * subTerpilih.bobot_ideal);
                }
             }
-            totalSkor += nilaiNormalisasi * (k.bobot || 0);
          });
 
-         let label = "Rendah (Aman)";
+         // Kategori Risiko berdasarkan skala 0 - 1.0
+         let label = "Sangat Aman";
          let warna = "bg-green-100 text-green-700";
 
-         if (totalSkor >= 0.75) {
-            label = "Tinggi (Bahaya)";
+         if (totalSkor >= 0.8) {
+            label = "Sangat Parah (Bahaya)";
             warna = "bg-red-100 text-red-700";
-         } else if (totalSkor >= 0.50) {
+         } else if (totalSkor >= 0.6) {
+            label = "Parah (Perhatian)";
+            warna = "bg-orange-100 text-orange-700";
+         } else if (totalSkor >= 0.4) {
             label = "Sedang (Waspada)";
-            warna = "bg-amber-100 text-amber-700";
+            warna = "bg-yellow-100 text-yellow-700";
+         } else if (totalSkor >= 0.2) {
+            label = "Aman";
+            warna = "bg-blue-100 text-blue-700";
          }
 
          return { ...s, totalSkor, label, warna };
@@ -82,21 +86,28 @@ export default function DashboardPage() {
    const fetchData = useCallback(async () => {
       setIsLoading(true);
       try {
-         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/penilaian/data");
+         // PERBAIKAN FATAL: Memperbaiki URL string menjadi literal template
+         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penilaian/data`);
          const json = await res.json();
+
          if (json.success) {
             setSiswa(json.data.siswa);
 
+            // Urutkan kriteria berdasarkan bobot tertinggi untuk grafik Pie Chart
             const sortedKriteria = [...json.data.kriteria].sort((a, b) => b.bobot - a.bobot);
             setKriteria(sortedKriteria);
 
-            const loadedScores: Record<number, Record<number, number>> = {};
-            json.data.nilai.forEach((n: { siswaId: number; kriteriaId: number; skor: number }) => {
-               if (!loadedScores[n.siswaId]) loadedScores[n.siswaId] = {};
-               loadedScores[n.siswaId][n.kriteriaId] = n.skor;
+            // Ambil data subkriteria dari backend
+            setSubKriteria(json.data.subKriteria);
+
+            // Mapping struktur data penilaian baru (menggunakan string kode)
+            const loadedScores: Record<number, Record<string, string>> = {};
+            json.data.penilaian.forEach((p: { siswa_id: number; kriteria_kode: string; subkriteria_kode: string }) => {
+               if (!loadedScores[p.siswa_id]) loadedScores[p.siswa_id] = {};
+               loadedScores[p.siswa_id][p.kriteria_kode] = p.subkriteria_kode;
             });
 
-            kalkulasiHasil(json.data.siswa, json.data.kriteria, loadedScores);
+            kalkulasiHasil(json.data.siswa, sortedKriteria, json.data.subKriteria, loadedScores);
          }
       } catch (error) {
          console.error("Gagal menarik data dashboard:", error);
@@ -110,13 +121,13 @@ export default function DashboardPage() {
    }, [fetchData]);
 
    const top5Siswa = hasilAkhir.slice(0, 5);
-   const jumlahRisikoTinggi = hasilAkhir.filter(h => h.totalSkor >= 0.75).length;
+   // Mendeteksi jumlah siswa di zona Parah & Sangat Parah (Skor >= 0.6)
+   const jumlahRisikoTinggi = hasilAkhir.filter(h => h.totalSkor >= 0.6).length;
 
    if (isLoading) {
       return (
          <div className="flex h-[80vh] flex-col justify-center items-center text-slate-500">
             <Activity className="animate-pulse mb-4 text-primary" size={40} />
-            {/* PERBAIKAN: Teks loading dibuat lebih natural */}
             <p className="font-medium animate-pulse text-sm">Memuat data dashboard...</p>
          </div>
       );
@@ -126,7 +137,6 @@ export default function DashboardPage() {
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
          <div className="mb-6">
-            {/* PERBAIKAN: Judul diubah dari Dashboard Eksekutif menjadi Dashboard Utama */}
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Dashboard Utama</h1>
             <p className="text-slate-500 mt-1 text-sm">Ringkasan hasil Sistem Pendukung Keputusan Deteksi Perundungan SMAN 2 Padang.</p>
          </div>
@@ -159,7 +169,7 @@ export default function DashboardPage() {
                </div>
                <div>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Metode SPK</p>
-                  <p className="text-2xl font-extrabold text-slate-800">AHP</p>
+                  <p className="text-2xl font-extrabold text-slate-800">AHP Absolut</p>
                </div>
             </div>
 
@@ -175,13 +185,14 @@ export default function DashboardPage() {
 
                <div className="grow flex items-end justify-around gap-2 mt-2 h-48 pt-4">
                   {top5Siswa.map((s, idx) => {
+                     // Karena AHP Absolut nilai maksimalnya 1.0, persentase didapat langsung dari (Skor * 100)
                      const heightPercent = s.totalSkor > 1 ? 100 : s.totalSkor * 100;
-                     const barColor = s.totalSkor >= 0.75 ? 'bg-red-500' : s.totalSkor >= 0.50 ? 'bg-amber-500' : 'bg-primary';
+                     const barColor = s.totalSkor >= 0.8 ? 'bg-red-500' : s.totalSkor >= 0.6 ? 'bg-orange-500' : s.totalSkor >= 0.4 ? 'bg-amber-500' : 'bg-primary';
 
                      return (
                         <div key={s.id} className="w-1/6 flex flex-col items-center justify-end h-full group">
                            <div className="text-[11px] font-bold text-slate-500 mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {s.totalSkor.toFixed(3)}
+                              {s.totalSkor.toFixed(4)}
                            </div>
                            <div
                               className={`w-full max-w-12.5 rounded-t-md transition-all duration-1000 ease-out shadow-sm relative overflow-hidden ${barColor}`}
@@ -239,7 +250,7 @@ export default function DashboardPage() {
                            <th className="py-2.5 px-3 font-bold w-12 text-center text-xs">Rank</th>
                            <th className="py-2.5 px-3 font-bold text-xs">Nama Siswa</th>
                            <th className="py-2.5 px-3 font-bold text-center text-xs">Kelas</th>
-                           <th className="py-2.5 px-3 font-bold text-center text-xs">Skor (V)</th>
+                           <th className="py-2.5 px-3 font-bold text-center text-xs">Skor AHP</th>
                            <th className="py-2.5 px-3 font-bold text-center text-xs">Status</th>
                         </tr>
                      </thead>
@@ -249,7 +260,7 @@ export default function DashboardPage() {
                         ) : top5Siswa.map((s, idx) => (
                            <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
                               <td className="py-2 px-3 text-center">
-                                 <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full font-bold text-[10px] ${idx === 0 ? 'bg-yellow-100 text-yellow-700' : idx === 1 ? 'bg-slate-200 text-slate-700' : idx === 2 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                 <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full font-bold text-[10px] ${idx === 0 ? 'bg-red-100 text-red-700' : idx === 1 ? 'bg-orange-100 text-orange-700' : idx === 2 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
                                     {idx + 1}
                                  </span>
                               </td>
@@ -268,7 +279,6 @@ export default function DashboardPage() {
                </div>
             </div>
 
-            {/* PERBAIKAN: Judul diubah dari Kesimpulan Eksekutif menjadi Kesimpulan Analisis */}
             <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm flex flex-col">
                <div className="flex items-center gap-2 mb-3 border-b border-blue-200/50 pb-3">
                   <AlertTriangle className="text-red-500" size={20} />
@@ -281,7 +291,7 @@ export default function DashboardPage() {
                   ) : (
                      <>
                         <p>
-                           Berdasarkan perhitungan metode AHP terhadap <strong>{siswa.length} siswa</strong>, ditemukan <strong>{jumlahRisikoTinggi} siswa</strong> terindikasi berada di zona <strong className="text-red-700">Risiko Tinggi (Bahaya)</strong>.
+                           Berdasarkan perhitungan metode AHP Absolut terhadap <strong>{siswa.length} siswa</strong>, ditemukan <strong>{jumlahRisikoTinggi} siswa</strong> terindikasi berada di zona <strong className="text-red-700">Risiko Tinggi (Parah & Sangat Parah)</strong>.
                         </p>
                         {top5Siswa.length > 0 && (
                            <p>
@@ -290,7 +300,7 @@ export default function DashboardPage() {
                         )}
                         <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200 shadow-sm">
                            <p className="font-bold text-slate-800 mb-1 text-xs">Rekomendasi:</p>
-                           <p className="text-slate-600 text-[11px] leading-tight">Prioritaskan pemanggilan dan pendampingan untuk siswa di Top 5 kerentanan ini.</p>
+                           <p className="text-slate-600 text-[11px] leading-tight">Prioritaskan investigasi, pemanggilan, dan pendampingan psikologis untuk siswa di Top 5 kerentanan ini.</p>
                         </div>
                      </>
                   )}
