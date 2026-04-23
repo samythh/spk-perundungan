@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-// PERBAIKAN: Menambahkan ikon Edit, Eye, dan EyeOff
 import { Shield, UserPlus, Trash2, RefreshCw, KeyRound, AlertCircle, Edit, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -22,14 +21,14 @@ export default function MasterAdminPage() {
    const [formData, setFormData] = useState({ username: '', password: '', nama: '', role: 'GURU_BK' });
    const [isSubmitting, setIsSubmitting] = useState(false);
 
-   // STATE BARU: Untuk melacak mode Edit dan status Hide/Unhide Password
    const [editId, setEditId] = useState<number | null>(null);
    const [showPassword, setShowPassword] = useState(false);
 
    const fetchUsers = useCallback(async () => {
       setIsLoading(true);
       try {
-         const res = await fetch("process.env.NEXT_PUBLIC_API_URL/api/users");
+         // PERBAIKAN 1: Menggunakan backtick (`) dan portal ${} agar variabel terbaca
+         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`);
          const json = await res.json();
          if (json.success) {
             setUsers(json.data);
@@ -53,8 +52,11 @@ export default function MasterAdminPage() {
       e.preventDefault();
       setIsSubmitting(true);
 
-      // LOGIKA CERDAS: Menentukan URL dan Method berdasarkan mode (Tambah atau Edit)
-      const url = editId ? `process.env.NEXT_PUBLIC_API_URL/api/users/${editId}` : "process.env.NEXT_PUBLIC_API_URL/api/users";
+      // PERBAIKAN 2: Menggunakan backtick (`) dan portal ${} untuk URL Tambah dan Edit
+      const url = editId
+         ? `${process.env.NEXT_PUBLIC_API_URL}/api/users/${editId}`
+         : `${process.env.NEXT_PUBLIC_API_URL}/api/users`;
+
       const method = editId ? "PUT" : "POST";
 
       try {
@@ -85,7 +87,8 @@ export default function MasterAdminPage() {
       if (!isConfirmed) return;
 
       try {
-         const res = await fetch(`process.env.NEXT_PUBLIC_API_URL/api/users/${id}`, { method: "DELETE" });
+         // PERBAIKAN 3: Menggunakan backtick (`) dan portal ${} untuk URL Delete
+         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${id}`, { method: "DELETE" });
          const json = await res.json();
          if (json.success) {
             fetchUsers();
@@ -98,12 +101,11 @@ export default function MasterAdminPage() {
       }
    };
 
-   // FUNGSI BARU: Untuk memicu form modal dalam mode Edit
    const openEditModal = (user: User) => {
       setEditId(user.id);
       setFormData({
          username: user.username,
-         password: '', // Kosongkan password agar admin tidak melihat hash, dan tidak wajib diisi
+         password: '',
          nama: user.nama,
          role: user.role
       });
@@ -182,7 +184,6 @@ export default function MasterAdminPage() {
                                  </span>
                               </td>
                               <td className="py-3 px-4 text-center">
-                                 {/* Tombol Edit dan Hapus disejajarkan menggunakan flex */}
                                  <div className="flex justify-center gap-2">
                                     <button
                                        onClick={() => openEditModal(u)}
@@ -252,12 +253,10 @@ export default function MasterAdminPage() {
                         <span>Password Akses</span>
                         {editId && <span className="text-[10px] text-slate-400 font-normal">*Kosongkan jika tidak diubah</span>}
                      </label>
-                     {/* INPUT PASSWORD DENGAN FITUR HIDE/UNHIDE */}
                      <div className="relative">
                         <input
                            type={showPassword ? "text" : "password"}
                            name="password"
-                           // Hanya wajib diisi jika membuat akun baru (editId = null)
                            required={!editId}
                            className="w-full border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm font-mono pr-10"
                            placeholder={editId ? "Ketik sandi baru untuk mereset..." : "Minimal 6 karakter"}
