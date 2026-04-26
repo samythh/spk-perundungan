@@ -6,15 +6,22 @@ const prisma = require('../config/database');
 // Endpoint: GET /api/subkriteria
 router.get('/', async (req, res) => {
    try {
-      // Mengambil seluruh data subkriteria dan diurutkan berdasarkan kode (T1 ke T5)
-      const dataSub = await prisma.subKriteria.findMany({ // Sesuaikan dengan nama model Prisma Anda
+      const dataSub = await prisma.subKriteria.findMany({
          orderBy: { kode: 'asc' }
       });
+
+      // PERBAIKAN: Menerjemahkan (Mapping) nama kolom dari Database ke Frontend
+      const formattedData = dataSub.map(item => ({
+         kode: item.kode,
+         nama: item.nama_sub,         // DB (nama_sub) diterjemahkan menjadi (nama)
+         eigen: item.eigen || 0,      // Memanggil kolom eigen baru
+         bobot: item.bobot_ideal || 0 // DB (bobot_ideal) diterjemahkan menjadi (bobot)
+      }));
 
       res.status(200).json({
          success: true,
          message: 'Data Sub-Kriteria berhasil dimuat',
-         data: dataSub
+         data: formattedData // Mengirimkan data yang sudah diterjemahkan
       });
    } catch (error) {
       console.error('Error fetching subkriteria:', error);

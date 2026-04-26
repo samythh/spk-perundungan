@@ -139,7 +139,7 @@ router.post('/hitung-subkriteria', async (req, res) => {
                where: { kode: kode },
                data: {
                   eigen: bobot[kode], // Simpan nilai asli Eigen
-                  bobot: bobot[kode] / maxEigen // Simpan Bobot Ideal (Maksimal 1.0)
+                  bobot_ideal: bobot[kode] / maxEigen // Simpan Bobot Ideal (Maksimal 1.0)
                }
             });
          }

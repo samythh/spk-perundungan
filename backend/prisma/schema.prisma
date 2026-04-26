@@ -36,6 +36,7 @@ model Kriteria {
 model SubKriteria {
   kode        String  @id             // Contoh: T1, T2
   nama_sub    String                  // Contoh: Sangat Parah, Aman
+  eigen       Float   @default(0)
   bobot_ideal Float                   // Bobot Idealisasi (Contoh: 1.0000, 0.6290)
   keterangan  String? @db.Text
   

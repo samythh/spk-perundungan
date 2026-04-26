@@ -6,7 +6,8 @@ import {
    Save, RefreshCw, Info, AlertTriangle,
    CheckCircle2, XCircle, Calculator, Sigma,
    PieChart, BookOpen, Activity,
-   GitCommit, ChevronLeft, ChevronRight, Target, ClipboardList
+   GitCommit, ChevronLeft, ChevronRight, Target, ClipboardList,
+   Loader2, AlertCircle // Menambahkan ikon Loader dan Alert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,6 +48,15 @@ export default function PerbandinganSubKriteriaPage() {
 
    const [activeStep, setActiveStep] = useState(0);
 
+   // FITUR BARU: Mengontrol status tombol Simpan dan Notifikasi (UI Feedback)
+   const [isSubmitting, setIsSubmitting] = useState(false);
+   const [toast, setToast] = useState<{ show: boolean; msg: string; type: 'success' | 'error' }>({ show: false, msg: '', type: 'success' });
+
+   const showToast = useCallback((msg: string, type: 'success' | 'error') => {
+      setToast({ show: true, msg, type });
+      setTimeout(() => setToast({ show: false, msg: '', type: 'success' }), 3000);
+   }, []);
+
    const fetchSubKriteria = useCallback(async () => {
       setIsLoading(true);
       try {
@@ -79,10 +89,11 @@ export default function PerbandinganSubKriteriaPage() {
          }
       } catch (error) {
          console.error("Gagal memuat sub-kriteria:", error);
+         showToast("Gagal memuat data master T1-T5 dari database.", "error");
       } finally {
          setIsLoading(false);
       }
-   }, []);
+   }, [showToast]);
 
    useEffect(() => {
       fetchSubKriteria();
@@ -129,7 +140,9 @@ export default function PerbandinganSubKriteriaPage() {
       });
    };
 
+   // PERBAIKAN: Menambahkan animasi loading (isSubmitting) dan penanganan Error 
    const handleSimpan = async () => {
+      setIsSubmitting(true);
       try {
          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ahp/hitung-subkriteria`, {
             method: "POST",
@@ -150,9 +163,15 @@ export default function PerbandinganSubKriteriaPage() {
             } else {
                setIsResultOpen(true);
             }
+         } else {
+            // Jika backend membalas dengan status gagal (misal 400/500)
+            showToast(result.message || "Gagal memproses matriks.", "error");
          }
       } catch (error) {
          console.error("Kesalahan jaringan:", error);
+         showToast("Tidak dapat terhubung ke server. Pastikan backend berjalan.", "error");
+      } finally {
+         setIsSubmitting(false);
       }
    };
 
@@ -204,12 +223,9 @@ export default function PerbandinganSubKriteriaPage() {
    const wsv: Record<string, number> = {};
    const rasio: Record<string, number> = {};
    let calculatedLambdaMax = 0;
-
-   // PERBAIKAN 2 & 3: Mendefinisikan maxEigen secara dinamis dan menghapus maxSubNama yang tidak dipakai
    let maxEigen = 1;
 
    if (ahpResult) {
-      // Mencari nilai bobot/eigen tertinggi dari respons backend
       maxEigen = Math.max(...Object.values(ahpResult.bobot));
 
       subKriteria.forEach(baris => {
@@ -233,7 +249,18 @@ export default function PerbandinganSubKriteriaPage() {
    const currentRI = RI_TABLE[n] || 1.12;
 
    return (
-      <div className="space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+
+         {/* CUSTOM TOAST NOTIFICATION UNTUK ERROR */}
+         {toast.show && (
+            <div className={`fixed bottom-6 right-6 z-100 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-white font-medium animate-in slide-in-from-bottom-5 fade-in duration-300
+               ${toast.type === 'success' ? 'bg-emerald-600 shadow-emerald-600/20' : 'bg-red-600 shadow-red-600/20'}`}
+            >
+               {toast.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+               <span>{toast.msg}</span>
+            </div>
+         )}
+
          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border shadow-sm">
             <div className="flex items-center gap-3">
                <div className="p-3 bg-primary/10 rounded-xl">
@@ -246,9 +273,15 @@ export default function PerbandinganSubKriteriaPage() {
                   </p>
                </div>
             </div>
+            {/* PERBAIKAN: Tombol dengan Efek Loading */}
             {activeStep === 0 && (
-               <Button onClick={handleSimpan} className="flex items-center gap-2 shadow-md px-6 bg-emerald-600 hover:bg-emerald-700" disabled={warnings.length > 0 || subKriteria.length === 0}>
-                  <Save size={16} /> Simpan & Hitung Bobot
+               <Button
+                  onClick={handleSimpan}
+                  disabled={warnings.length > 0 || subKriteria.length === 0 || isSubmitting}
+                  className="flex items-center gap-2 shadow-md px-6 bg-emerald-600 hover:bg-emerald-700"
+               >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  {isSubmitting ? "Mengkalkulasi..." : "Simpan & Hitung Bobot"}
                </Button>
             )}
          </div>
@@ -329,7 +362,6 @@ export default function PerbandinganSubKriteriaPage() {
                               <TabsContent value="form" className="space-y-4">
                                  <div className="bg-blue-50 text-blue-800 p-4 rounded-xl flex items-start gap-3 mb-6 text-sm border border-blue-100">
                                     <Info className="shrink-0 mt-0.5" size={18} />
-                                    {/* PERBAIKAN 1: Menerapkan kode escape untuk tanda kutip ganda */}
                                     <p>Tentukan tingkat keparahan risiko antara satu kondisi dengan kondisi lainnya. Misalnya: &quot;Sangat Parah (T1) Mutlak Lebih Berisiko dibanding Sangat Aman (T5)&quot;.</p>
                                  </div>
                                  <div className="space-y-4">
