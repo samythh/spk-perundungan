@@ -7,7 +7,7 @@ import {
    CheckCircle2, XCircle, Calculator, Sigma,
    PieChart, BookOpen, Activity,
    GitCommit, ChevronLeft, ChevronRight, Target, ClipboardList,
-   Loader2, AlertCircle // Menambahkan ikon Loader dan Alert
+   Loader2, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,8 +47,6 @@ export default function PerbandinganSubKriteriaPage() {
    const [ahpResult, setAhpResult] = useState<AhpResult | null>(null);
 
    const [activeStep, setActiveStep] = useState(0);
-
-   // FITUR BARU: Mengontrol status tombol Simpan dan Notifikasi (UI Feedback)
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [toast, setToast] = useState<{ show: boolean; msg: string; type: 'success' | 'error' }>({ show: false, msg: '', type: 'success' });
 
@@ -140,7 +138,6 @@ export default function PerbandinganSubKriteriaPage() {
       });
    };
 
-   // PERBAIKAN: Menambahkan animasi loading (isSubmitting) dan penanganan Error 
    const handleSimpan = async () => {
       setIsSubmitting(true);
       try {
@@ -164,7 +161,6 @@ export default function PerbandinganSubKriteriaPage() {
                setIsResultOpen(true);
             }
          } else {
-            // Jika backend membalas dengan status gagal (misal 400/500)
             showToast(result.message || "Gagal memproses matriks.", "error");
          }
       } catch (error) {
@@ -251,7 +247,6 @@ export default function PerbandinganSubKriteriaPage() {
    return (
       <div className="space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
 
-         {/* CUSTOM TOAST NOTIFICATION UNTUK ERROR */}
          {toast.show && (
             <div className={`fixed bottom-6 right-6 z-100 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-white font-medium animate-in slide-in-from-bottom-5 fade-in duration-300
                ${toast.type === 'success' ? 'bg-emerald-600 shadow-emerald-600/20' : 'bg-red-600 shadow-red-600/20'}`}
@@ -273,7 +268,6 @@ export default function PerbandinganSubKriteriaPage() {
                   </p>
                </div>
             </div>
-            {/* PERBAIKAN: Tombol dengan Efek Loading */}
             {activeStep === 0 && (
                <Button
                   onClick={handleSimpan}
@@ -573,9 +567,10 @@ export default function PerbandinganSubKriteriaPage() {
                                     <TableRow className="bg-slate-100">
                                        <TableHead className="font-bold text-slate-700 border text-center align-middle" rowSpan={2}>Kode</TableHead>
                                        <TableHead className="font-bold text-slate-700 border text-center" colSpan={subKriteria.length}>1. Proses Perkalian: Matriks Awal × Eigenvector (W<sub>j</sub>)</TableHead>
-                                       <TableHead className="font-bold text-purple-700 border text-center align-middle bg-purple-50 w-28" rowSpan={2}>2. Total Baris<br />(WSV)</TableHead>
+                                       {/* PERBAIKAN 1: Melebarkan min-width kolom WSV agar angka tidak mendesak tabel */}
+                                       <TableHead className="font-bold text-purple-700 border text-center align-middle bg-purple-50 min-w-35" rowSpan={2}>2. Total Baris<br />(WSV)</TableHead>
                                        <TableHead className="font-bold text-emerald-700 border text-center align-middle bg-emerald-50 w-24" rowSpan={2}>Eigen Baris<br />(W<sub>i</sub>)</TableHead>
-                                       <TableHead className="font-bold text-orange-700 border text-center align-middle bg-orange-50 w-28" rowSpan={2}>3. Rasio<br />(WSV / W<sub>i</sub>)</TableHead>
+                                       <TableHead className="font-bold text-orange-700 border text-center align-middle bg-orange-50 min-w-27.5" rowSpan={2}>3. Rasio<br />(WSV / W<sub>i</sub>)</TableHead>
                                     </TableRow>
                                     <TableRow className="bg-slate-50">
                                        {subKriteria.map(k => <TableHead key={k.kode} className="font-bold text-center text-slate-600 border text-xs">{k.kode}</TableHead>)}
@@ -603,20 +598,21 @@ export default function PerbandinganSubKriteriaPage() {
                                                    </TableCell>
                                                 );
                                              })}
-                                             <TableCell className="text-center border bg-purple-50/30 align-middle">
+                                             <TableCell className="text-center border bg-purple-50/30 align-middle px-3">
                                                 <div className="font-bold text-purple-700 font-mono text-[14px]">
                                                    {wsv[baris.kode]?.toFixed(4)}
                                                 </div>
-                                                <div className="text-[9px] mt-1.5 text-purple-400 font-mono tracking-tighter max-w-35 mx-auto wrap-break-word leading-tight">
-                                                   <span className="text-[8px] mr-1">Σ=</span>{rowProducts.join(' + ')}
+                                                {/* PERBAIKAN 2: Menghapus 'Σ=' dan menyesuaikan class agar text wrap dengan rapi */}
+                                                <div className="text-[8.5px] mt-1.5 text-purple-400 font-mono tracking-tighter whitespace-normal wrap-break-word leading-snug">
+                                                   {rowProducts.join(' + ')}
                                                 </div>
                                              </TableCell>
                                              <TableCell className="font-bold text-center border text-emerald-700 font-mono align-middle bg-emerald-50/30">{ahpResult.bobot[baris.kode]?.toFixed(4)}</TableCell>
-                                             <TableCell className="text-center border bg-orange-50/30 align-middle">
+                                             <TableCell className="text-center border bg-orange-50/30 align-middle px-3">
                                                 <div className="font-bold text-orange-700 font-mono text-[14px]">
                                                    {rasio[baris.kode]?.toFixed(4)}
                                                 </div>
-                                                <div className="text-[10px] mt-1 text-orange-400 font-mono tracking-tighter">
+                                                <div className="text-[9px] mt-1 text-orange-400 font-mono tracking-tighter">
                                                    {wsv[baris.kode]?.toFixed(4)} ÷ {ahpResult.bobot[baris.kode]?.toFixed(4)}
                                                 </div>
                                              </TableCell>
