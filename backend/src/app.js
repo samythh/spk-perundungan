@@ -30,6 +30,7 @@ const siswaRoutes = require('./routes/siswaRoutes');
 const ahpRoutes = require('./routes/ahpRoutes');
 const penilaianRoutes = require('./routes/penilaianRoutes');
 const userRoutes = require('./routes/userRoutes');
+const subkriteriaRoutes = require('./routes/subkriteriaRoutes');
 
 // ==========================================
 // 2. MENDAFTARKAN URL (ENDPOINTS)
@@ -41,6 +42,7 @@ app.use('/api/siswa', siswaRoutes);
 app.use('/api/ahp', ahpRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/penilaian', penilaianRoutes);
+app.use('/api/subkriteria', subkriteriaRoutes);
 
 // Rute dasar untuk mengecek apakah server hidup
 app.get('/', (req, res) => {
