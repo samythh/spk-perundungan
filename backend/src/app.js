@@ -5,8 +5,19 @@ const cors = require('cors');
 
 const app = express();
 
-// Middleware dasar
-app.use(cors());
+// ==========================================
+// PENGATURAN KEAMANAN (CORS) YANG DIPERBARUI
+// ==========================================
+// Mendaftarkan alamat frontend secara eksplisit agar tidak diblokir peramban
+app.use(cors({
+   origin: [
+      'http://localhost:3000', // Akses saat Anda membangun aplikasi di laptop
+      'https://spk-sman2-padang.vercel.app' // Akses saat aplikasi sudah online di Vercel
+   ],
+   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Mengizinkan semua tindakan CRUD
+   credentials: true // Mengizinkan pengiriman token atau data sesi
+}));
+
 app.use(express.json());
 
 // ==========================================
@@ -17,8 +28,6 @@ const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const siswaRoutes = require('./routes/siswaRoutes');
 const ahpRoutes = require('./routes/ahpRoutes');
-
-// MENGATASI MASALAH: Mengimpor rute penilaian yang baru kita buat
 const penilaianRoutes = require('./routes/penilaianRoutes');
 const userRoutes = require('./routes/userRoutes');
 
@@ -31,8 +40,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/siswa', siswaRoutes);
 app.use('/api/ahp', ahpRoutes);
 app.use('/api/users', userRoutes);
-
-// MENGATASI MASALAH: Membuka pintu akses untuk URL /api/penilaian
 app.use('/api/penilaian', penilaianRoutes);
 
 // Rute dasar untuk mengecek apakah server hidup

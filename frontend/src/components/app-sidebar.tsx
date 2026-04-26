@@ -36,6 +36,8 @@ export function AppSidebar() {
          </SidebarHeader>
 
          <SidebarContent className="px-2">
+
+            {/* GROUP: DASHBOARD */}
             <SidebarGroup>
                <SidebarMenu>
                   <SidebarMenuItem>
@@ -49,6 +51,7 @@ export function AppSidebar() {
                </SidebarMenu>
             </SidebarGroup>
 
+            {/* GROUP: MASTER DATA */}
             <SidebarGroup>
                <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-slate-400 text-[10px] uppercase tracking-wider font-bold">
                   Master Data
@@ -69,6 +72,9 @@ export function AppSidebar() {
                                  <a href="/dashboard/master/kriteria" className="text-sm py-2 block hover:text-primary transition-colors">Data Kriteria</a>
                               </SidebarMenuSubItem>
                               <SidebarMenuSubItem>
+                                 <a href="/dashboard/master/subkriteria" className="text-sm py-2 block hover:text-primary transition-colors">Data Sub-Kriteria</a>
+                              </SidebarMenuSubItem>
+                              <SidebarMenuSubItem>
                                  <a href="/dashboard/master/alternatif" className="text-sm py-2 block hover:text-primary transition-colors">Data Alternatif</a>
                               </SidebarMenuSubItem>
                            </SidebarMenuSub>
@@ -78,6 +84,7 @@ export function AppSidebar() {
                </SidebarMenu>
             </SidebarGroup>
 
+            {/* GROUP: ANALISIS / PROSES AHP */}
             <SidebarGroup>
                <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-slate-400 text-[10px] uppercase tracking-wider font-bold">
                   Analisis
@@ -94,8 +101,18 @@ export function AppSidebar() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2">
                            <SidebarMenuSub>
+                              {/* PERBAIKAN: Menu Struktur Hierarki diletakkan dengan benar di urutan pertama sini */}
                               <SidebarMenuSubItem>
-                                 <a href="/dashboard/ahp/perbandingan" className="text-sm py-2 block hover:text-primary transition-colors">Perbandingan Kriteria</a>
+                                 <a href="/dashboard/ahp/hierarki" className="text-sm py-2 block hover:text-primary transition-colors font-medium text-blue-600">Struktur Hierarki</a>
+                              </SidebarMenuSubItem>
+                              <SidebarMenuSubItem>
+                                 <a href="/dashboard/ahp/perbandingan-kriteria" className="text-sm py-2 block hover:text-primary transition-colors">Perbandingan Kriteria</a>
+                              </SidebarMenuSubItem>
+                              <SidebarMenuSubItem>
+                                 <a href="/dashboard/ahp/perbandingan-subkriteria" className="text-sm py-2 block hover:text-primary transition-colors">Perbandingan Sub-Kriteria</a>
+                              </SidebarMenuSubItem>
+                              <SidebarMenuSubItem>
+                                 <a href="/dashboard/ahp/penilaian" className="text-sm py-2 block hover:text-primary transition-colors">Penilaian Siswa</a>
                               </SidebarMenuSubItem>
                               <SidebarMenuSubItem>
                                  <a href="/dashboard/ahp/hasil" className="text-sm py-2 block hover:text-primary transition-colors">Hasil Perhitungan</a>
@@ -107,13 +124,13 @@ export function AppSidebar() {
                </SidebarMenu>
             </SidebarGroup>
 
+            {/* GROUP: ADMIN */}
             <SidebarGroup>
                <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-slate-400 text-[10px] uppercase tracking-wider font-bold">
                   Admin
                </SidebarGroupLabel>
                <SidebarMenu>
                   <SidebarMenuItem>
-                     {/* PERBAIKAN: Menambahkan atribut asChild dan membungkus isinya dengan tag <a> yang mengarah ke rute /dashboard/admin */}
                      <SidebarMenuButton asChild tooltip="Master User" className="hover:bg-primary/10 hover:text-primary">
                         <a href="/dashboard/admin">
                            <UserCog />

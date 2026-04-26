@@ -3,7 +3,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Database, Calculator, Network } from "lucide-react";
+import {
+   Database,
+   Calculator,
+   Plus,
+   Pencil,
+   Trash2,
+   AlertCircle,
+   Loader2
+} from "lucide-react";
+import Link from "next/link";
 import {
    Table,
    TableBody,
@@ -12,6 +21,16 @@ import {
    TableHeader,
    TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+   Dialog,
+   DialogContent,
+   DialogHeader,
+   DialogTitle,
+   DialogTrigger,
+   DialogFooter
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface Kriteria {
    id: number;
@@ -21,312 +40,230 @@ interface Kriteria {
    bobot: number;
 }
 
-const subKriteriaData = [
-   { kode: "T1", nama: "Sangat Parah", eigen: 0.4162, bobot: 1.0000, color: "text-red-700 bg-red-50 border-red-300" },
-   { kode: "T2", nama: "Parah", eigen: 0.2618, bobot: 0.6290, color: "text-orange-700 bg-orange-50 border-orange-300" },
-   { kode: "T3", nama: "Sedang", eigen: 0.1610, bobot: 0.3868, color: "text-yellow-700 bg-yellow-50 border-yellow-300" },
-   { kode: "T4", nama: "Aman", eigen: 0.0986, bobot: 0.2369, color: "text-blue-700 bg-blue-50 border-blue-300" },
-   { kode: "T5", nama: "Sangat Aman", eigen: 0.0624, bobot: 0.1499, color: "text-green-700 bg-green-50 border-green-300" },
-];
-
-const matriksPerbandingan = [
-   { baris: "T1", T1: "1", T2: "2", T3: "3", T4: "4", T5: "6", eigen: "0.4162" },
-   { baris: "T2", T1: "1/2", T2: "1", T3: "2", T4: "3", T5: "4", eigen: "0.2618" },
-   { baris: "T3", T1: "1/3", T2: "1/2", T3: "1", T4: "2", T5: "3", eigen: "0.1610" },
-   { baris: "T4", T1: "1/4", T2: "1/3", T3: "1/2", T4: "1", T5: "2", eigen: "0.0986" },
-   { baris: "T5", T1: "1/6", T2: "1/4", T3: "1/3", T4: "1/2", T5: "1", eigen: "0.0624" },
-];
-
-// Data alternatif untuk divisualisasikan di bagan
-const alternatifDummy = ["Siswa 1", "Siswa 2", "Siswa 3", "Siswa n"];
-
-export default function DataKriteriaPage() {
+export default function MasterKriteriaPage() {
    const [kriteria, setKriteria] = useState<Kriteria[]>([]);
    const [isLoading, setIsLoading] = useState(true);
 
+   const [isOpen, setIsOpen] = useState(false);
+   const [editingItem, setEditingItem] = useState<Kriteria | null>(null);
+   const [formData, setFormData] = useState({ kode: "", nama: "", keterangan: "" });
+
+   const [isSubmitting, setIsSubmitting] = useState(false);
+
    useEffect(() => {
-      const fetchKriteria = async () => {
-         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`);
-            const data = await response.json();
-            if (data.success) setKriteria(data.data);
-         } catch (error) {
-            console.error("Gagal memuat data:", error);
-         } finally {
-            setIsLoading(false);
-         }
-      };
       fetchKriteria();
    }, []);
 
-   const maxEigen = Math.max(...subKriteriaData.map(sub => sub.eigen));
-
-   // Fungsi matematis untuk mengatur jarak antar kotak di SVG secara dinamis
-   const getXPos = (index: number, total: number) => {
-      if (total === 1) return 50;
-      return 10 + (index * (80 / (total - 1))); // Menyebar dari 10% hingga 90%
+   const fetchKriteria = async () => {
+      setIsLoading(true);
+      try {
+         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`);
+         const data = await response.json();
+         if (data.success) setKriteria(data.data);
+      } catch (error) {
+         console.error("Gagal memuat data kriteria:", error);
+      } finally {
+         setIsLoading(false);
+      }
    };
 
-   // Menggunakan kriteria dummy saat loading agar garis tidak error
-   const displayKriteria = kriteria.length > 0 ? kriteria : [
-      { kode: 'C1', nama: 'Loading...' }, { kode: 'C2', nama: 'Loading...' },
-      { kode: 'C3', nama: 'Loading...' }, { kode: 'C4', nama: 'Loading...' }, { kode: 'C5', nama: 'Loading...' }
-   ];
+   const handleSubmit = async () => {
+      setIsSubmitting(true);
+
+      const url = editingItem
+         ? `${process.env.NEXT_PUBLIC_API_URL}/api/kriteria/${editingItem.id}`
+         : `${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`;
+
+      const method = editingItem ? "PUT" : "POST";
+
+      try {
+         const response = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+         });
+
+         // Ambil detail pesan dari backend (jika backend mengirimkan JSON error)
+         const result = await response.json();
+
+         if (response.ok) {
+            alert(`Kriteria berhasil ${editingItem ? "diperbarui" : "ditambahkan"}!`);
+            setIsOpen(false);
+            setEditingItem(null);
+            setFormData({ kode: "", nama: "", keterangan: "" });
+            await fetchKriteria();
+         } else {
+            // MODIFIKASI: Menampilkan pesan error spesifik dari backend
+            console.error("Backend Error:", result);
+            alert(`Gagal: ${result.message || "Terjadi kesalahan pada server"}`);
+         }
+      } catch (error) {
+         console.error("Network Error:", error);
+         alert("Tidak dapat terhubung ke server. Pastikan Backend sudah dijalankan.");
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
+
+   const handleDelete = async (id: number) => {
+      if (confirm("Apakah Anda yakin ingin menghapus kriteria ini? Ini akan meriset perhitungan AHP Anda.")) {
+         try {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria/${id}`, { method: "DELETE" });
+            alert("Kriteria berhasil dihapus!");
+            await fetchKriteria();
+         } catch (error) {
+            console.error("Gagal menghapus:", error);
+            alert("Gagal menghapus kriteria.");
+         }
+      }
+   };
 
    return (
-      <div className="space-y-6 pb-10">
-         {/* Header */}
-         <div className="flex items-center gap-3 pb-4 border-b">
-            <div className="p-2 bg-primary/10 rounded-lg">
-               <Database className="w-6 h-6 text-primary" />
+      <div className="space-y-6 pb-10 animate-in fade-in duration-500">
+         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b">
+            <div className="flex items-center gap-3">
+               <div className="p-2 bg-primary/10 rounded-lg">
+                  <Database className="w-6 h-6 text-primary" />
+               </div>
+               <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Manajemen Kriteria</h1>
+                  <p className="text-sm text-muted-foreground">Kelola parameter dan bobot dasar keputusan.</p>
+               </div>
             </div>
-            <div>
-               <h1 className="text-2xl font-bold tracking-tight">Master Data Kriteria</h1>
-               <p className="text-sm text-muted-foreground">
-                  Kelola parameter utama dan intensitas penilaian AHP Absolut.
-               </p>
+
+            <div className="flex items-center gap-2">
+               <Button variant="outline" asChild className="gap-2 border-primary text-primary hover:bg-primary/5">
+                  <Link href="/dashboard/ahp/perbandingan-kriteria">
+                     <Calculator size={16} />
+                     Lihat Perhitungan AHP
+                  </Link>
+               </Button>
+
+               <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                  <DialogTrigger asChild>
+                     <Button className="gap-2" onClick={() => {
+                        setEditingItem(null);
+                        setFormData({ kode: `C${kriteria.length + 1}`, nama: "", keterangan: "" });
+                     }}>
+                        <Plus size={16} />
+                        Tambah Kriteria
+                     </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                     <DialogHeader>
+                        <DialogTitle>{editingItem ? "Edit Kriteria" : "Tambah Kriteria Baru"}</DialogTitle>
+                     </DialogHeader>
+                     <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                           <label className="text-sm font-medium">Kode Kriteria</label>
+                           <Input
+                              value={formData.kode}
+                              onChange={(e) => setFormData({ ...formData, kode: e.target.value })}
+                              placeholder="Contoh: C6"
+                              disabled={isSubmitting}
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-sm font-medium">Nama Kriteria</label>
+                           <Input
+                              value={formData.nama}
+                              onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                              placeholder="Contoh: Lingkungan Keluarga"
+                              disabled={isSubmitting}
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-sm font-medium">Keterangan</label>
+                           <textarea
+                              value={formData.keterangan}
+                              onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                              placeholder="Jelaskan definisi kriteria ini..."
+                              disabled={isSubmitting}
+                              className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                           />
+                        </div>
+                     </div>
+                     <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+                           Batal
+                        </Button>
+                        <Button onClick={handleSubmit} disabled={isSubmitting}>
+                           {isSubmitting ? (
+                              <>
+                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                 Menyimpan...
+                              </>
+                           ) : (
+                              "Simpan Kriteria"
+                           )}
+                        </Button>
+                     </DialogFooter>
+                  </DialogContent>
+               </Dialog>
             </div>
          </div>
 
-         {/* BAGIAN DIAGRAM HIERARKI MURNI (SVG NETWORK GRAPH) */}
+         <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex gap-3 items-start">
+            <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-amber-800 leading-relaxed">
+               <strong>Catatan:</strong> Menambah atau menghapus kriteria akan memengaruhi struktur matriks perbandingan.
+               Anda diwajibkan melakukan perhitungan ulang pada menu <strong>Proses AHP</strong> setelah melakukan perubahan data di sini.
+            </p>
+         </div>
+
          <div className="border rounded-lg bg-card shadow-sm overflow-hidden">
-            <div className="p-4 border-b bg-slate-50 flex items-center gap-2">
-               <Network className="w-5 h-5 text-slate-600" />
-               <h2 className="font-semibold text-card-foreground">Struktur Hierarki Keputusan (AHP Absolut)</h2>
-            </div>
-
-            {/* Area Kanvas Diagram - Menggunakan overflow-x-auto agar aman di HP */}
-            <div className="w-full overflow-x-auto bg-slate-50/50 p-4">
-               <div className="relative min-w-200 h-150 mx-auto">
-
-                  {/* LAPISAN 1: GARIS SVG PENYAMBUNG (Background) */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-
-                     {/* 1. Garis Goal ke Kriteria (Warna Biru Gelap) */}
-                     {displayKriteria.map((_, i) => (
-                        <line key={`l1-${i}`} x1="50%" y1="60" x2={`${getXPos(i, displayKriteria.length)}%`} y2="160" stroke="#94a3b8" strokeWidth="2" />
-                     ))}
-
-                     {/* 2. Garis Kriteria ke Sub-Kriteria (Jaring-jaring AHP) */}
-                     {displayKriteria.map((_, i) =>
-                        subKriteriaData.map((_, j) => (
-                           <line key={`l2-${i}-${j}`}
-                              x1={`${getXPos(i, displayKriteria.length)}%`} y1="220"
-                              x2={`${getXPos(j, subKriteriaData.length)}%`} y2="340"
-                              stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4 2" className="opacity-50" />
-                        ))
-                     )}
-
-                     {/* 3. Garis Sub-Kriteria ke Alternatif Siswa */}
-                     {subKriteriaData.map((_, i) =>
-                        alternatifDummy.map((_, j) => (
-                           <line key={`l3-${i}-${j}`}
-                              x1={`${getXPos(i, subKriteriaData.length)}%`} y1="400"
-                              x2={`${getXPos(j, alternatifDummy.length)}%`} y2="520"
-                              stroke="#cbd5e1" strokeWidth="1" />
-                        ))
-                     )}
-                  </svg>
-
-                  {/* LAPISAN 2: KOTAK-KOTAK HIERARKI (Foreground) */}
-
-                  {/* Level 1: GOAL */}
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 w-64 bg-blue-700 text-white p-2.5 rounded-lg text-center shadow-lg border border-blue-800">
-                     <span className="block text-[10px] uppercase text-blue-200 tracking-widest font-bold">Level 1: Goal</span>
-                     <span className="font-bold text-sm">Evaluasi Risiko Perundungan</span>
-                  </div>
-
-                  {/* Level 2: KRITERIA */}
-                  {displayKriteria.map((c, i) => (
-                     <div key={c.kode} style={{ left: `${getXPos(i, displayKriteria.length)}%` }}
-                        className="absolute top-40 -translate-x-1/2 z-10 w-32 bg-white border-2 border-blue-300 text-blue-800 p-2 rounded-lg text-center shadow-md">
-                        <span className="block text-[10px] uppercase text-slate-400 font-bold mb-1">Level 2</span>
-                        <span className="block font-black">{c.kode}</span>
-                        <span className="text-[11px] leading-tight font-medium">{c.nama}</span>
-                     </div>
+            <Table>
+               <TableHeader className="bg-muted/50">
+                  <TableRow>
+                     <TableHead className="w-20 text-center">Kode</TableHead>
+                     <TableHead>Kriteria</TableHead>
+                     <TableHead className="text-right">Bobot (AHP)</TableHead>
+                     <TableHead className="w-32 text-center">Aksi</TableHead>
+                  </TableRow>
+               </TableHeader>
+               <TableBody>
+                  {isLoading ? (
+                     <TableRow key="loading-row-kriteria">
+                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">Memuat data kriteria...</TableCell>
+                     </TableRow>
+                  ) : kriteria.map((item, index) => (
+                     <TableRow key={item.id || item.kode || `fallback-${index}`} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="text-center font-bold text-primary">{item.kode}</TableCell>
+                        <TableCell>
+                           <div className="font-semibold">{item.nama}</div>
+                           <div className="text-xs text-muted-foreground line-clamp-1">{item.keterangan}</div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold">
+                           {item.bobot ? item.bobot.toFixed(4) : "0.0000"}
+                        </TableCell>
+                        <TableCell>
+                           <div className="flex items-center justify-center gap-2">
+                              <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-8 w-8 text-slate-500 hover:text-primary"
+                                 onClick={() => {
+                                    setEditingItem(item);
+                                    setFormData({ kode: item.kode, nama: item.nama, keterangan: item.keterangan });
+                                    setIsOpen(true);
+                                 }}
+                              >
+                                 <Pencil size={14} />
+                              </Button>
+                              <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-8 w-8 text-slate-500 hover:text-destructive"
+                                 onClick={() => handleDelete(item.id)}
+                              >
+                                 <Trash2 size={14} />
+                              </Button>
+                           </div>
+                        </TableCell>
+                     </TableRow>
                   ))}
-
-                  {/* Level 3: SUB-KRITERIA (Intensitas) */}
-                  {subKriteriaData.map((s, i) => (
-                     <div key={s.kode} style={{ left: `${getXPos(i, subKriteriaData.length)}%` }}
-                        className={`absolute top-85 -translate-x-1/2 z-10 w-28 border-2 p-2 rounded-lg text-center shadow-md ${s.color}`}>
-                        <span className="block text-[10px] uppercase opacity-70 font-bold mb-1">Level 3</span>
-                        <span className="block font-black">{s.kode}</span>
-                        <span className="text-[11px] leading-tight font-bold">{s.nama}</span>
-                     </div>
-                  ))}
-
-                  {/* Level 4: ALTERNATIF SISWA */}
-                  {alternatifDummy.map((alt, i) => (
-                     <div key={alt} style={{ left: `${getXPos(i, alternatifDummy.length)}%` }}
-                        className={`absolute top-130 -translate-x-1/2 z-10 w-24 p-2 rounded-lg text-center shadow-md border-2 
-                          ${alt === "Siswa n" ? "bg-emerald-50 text-emerald-700 border-emerald-400 border-dashed" : "bg-slate-800 text-white border-slate-900"}`}>
-                        <span className="block text-[9px] uppercase text-slate-400 font-bold mb-0.5">Level 4</span>
-                        <span className="text-[11px] font-bold">{alt}</span>
-                     </div>
-                  ))}
-
-               </div>
-            </div>
-         </div>
-
-         {/* BAGIAN TENGAH: TABEL OPERASIONAL PURE */}
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="border rounded-lg bg-card flex flex-col shadow-sm">
-               <div className="p-4 border-b bg-muted/30">
-                  <h2 className="font-semibold text-card-foreground">1. Kriteria Utama</h2>
-               </div>
-               <div className="flex-1">
-                  <Table>
-                     <TableHeader>
-                        <TableRow>
-                           <TableHead className="w-20 text-center">Kode</TableHead>
-                           <TableHead>Kriteria</TableHead>
-                           <TableHead className="text-right">Bobot Global</TableHead>
-                        </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                        {isLoading ? (
-                           <TableRow>
-                              <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">Memuat data...</TableCell>
-                           </TableRow>
-                        ) : kriteria.map((item) => (
-                           <TableRow key={item.id}>
-                              <TableCell className="text-center font-medium">{item.kode}</TableCell>
-                              <TableCell>
-                                 <div className="font-medium">{item.nama}</div>
-                                 <div className="text-xs text-muted-foreground mt-0.5">{item.keterangan}</div>
-                              </TableCell>
-                              <TableCell className="text-right font-mono font-medium">
-                                 {item.bobot?.toFixed(4) || "0.0000"}
-                              </TableCell>
-                           </TableRow>
-                        ))}
-                     </TableBody>
-                  </Table>
-               </div>
-            </div>
-
-            <div className="border rounded-lg bg-card flex flex-col shadow-sm">
-               <div className="p-4 border-b bg-muted/30">
-                  <h2 className="font-semibold text-card-foreground">2. Intensitas Risiko (Sub-Kriteria)</h2>
-               </div>
-               <div className="flex-1 overflow-x-auto">
-                  <Table>
-                     <TableHeader>
-                        <TableRow>
-                           <TableHead className="w-16 text-center">Kode</TableHead>
-                           <TableHead>Skala Kondisi</TableHead>
-                           <TableHead className="text-right">Nilai Eigen</TableHead>
-                           <TableHead className="text-right">Bobot Ideal</TableHead>
-                        </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                        {subKriteriaData.map((sub) => (
-                           <TableRow key={sub.kode}>
-                              <TableCell className="text-center text-muted-foreground">{sub.kode}</TableCell>
-                              <TableCell>
-                                 <span className={`px-2 py-1 text-[11px] font-medium border rounded-md ${sub.color}`}>
-                                    {sub.nama}
-                                 </span>
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-muted-foreground">
-                                 {sub.eigen.toFixed(4)}
-                              </TableCell>
-                              <TableCell className="text-right font-mono font-bold text-slate-700">
-                                 {sub.bobot.toFixed(4)}
-                              </TableCell>
-                           </TableRow>
-                        ))}
-                     </TableBody>
-                  </Table>
-               </div>
-            </div>
-         </div>
-
-         {/* BAGIAN BAWAH: LAMPIRAN VALIDASI PERHITUNGAN */}
-         <div className="border rounded-lg bg-card mt-8 shadow-sm">
-            <div className="p-4 border-b bg-slate-50 flex items-center gap-2">
-               <Calculator className="w-5 h-5 text-slate-600" />
-               <h2 className="font-semibold text-card-foreground">3. Lampiran Validasi Perhitungan (AHP Absolut)</h2>
-            </div>
-
-            <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-8">
-               <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                     <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs">A</span>
-                     Mencari Nilai Eigen (W<sub>i</sub>)
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                     Nilai Eigen didapatkan dari rata-rata baris matriks perbandingan berpasangan (Pairwise Comparison) menggunakan skala Saaty (1-9).
-                  </p>
-                  <div className="overflow-x-auto border rounded-lg">
-                     <Table>
-                        <TableHeader className="bg-slate-50">
-                           <TableRow>
-                              <TableHead className="w-12 text-center font-bold border-r">Kriteria</TableHead>
-                              <TableHead className="text-center">T1</TableHead>
-                              <TableHead className="text-center">T2</TableHead>
-                              <TableHead className="text-center">T3</TableHead>
-                              <TableHead className="text-center">T4</TableHead>
-                              <TableHead className="text-center border-r">T5</TableHead>
-                              <TableHead className="text-center font-bold text-blue-700 bg-blue-50/50">W<sub>i</sub></TableHead>
-                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {matriksPerbandingan.map((row, idx) => (
-                              <TableRow key={idx}>
-                                 <TableCell className="text-center font-bold border-r bg-slate-50">{row.baris}</TableCell>
-                                 <TableCell className="text-center font-mono text-[11px] text-muted-foreground">{row.T1}</TableCell>
-                                 <TableCell className="text-center font-mono text-[11px] text-muted-foreground">{row.T2}</TableCell>
-                                 <TableCell className="text-center font-mono text-[11px] text-muted-foreground">{row.T3}</TableCell>
-                                 <TableCell className="text-center font-mono text-[11px] text-muted-foreground">{row.T4}</TableCell>
-                                 <TableCell className="text-center font-mono text-[11px] text-muted-foreground border-r">{row.T5}</TableCell>
-                                 <TableCell className="text-center font-mono text-[11px] font-bold text-blue-700 bg-blue-50/20">
-                                    {row.eigen}
-                                 </TableCell>
-                              </TableRow>
-                           ))}
-                        </TableBody>
-                     </Table>
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                     <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs">B</span>
-                     Proses Idealisasi (I<sub>i</sub>)
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                     Bobot Ideal didapatkan dengan membagi setiap Nilai Eigen dengan Nilai Eigen Tertinggi (W<sub>max</sub>). Diketahui W<sub>max</sub> adalah <strong>{maxEigen.toFixed(4)}</strong>.
-                  </p>
-
-                  <div className="overflow-x-auto border rounded-lg">
-                     <Table>
-                        <TableHeader className="bg-slate-50">
-                           <TableRow>
-                              <TableHead className="w-12 text-center font-bold border-r">Kode</TableHead>
-                              <TableHead className="text-center">Rumus (W<sub>i</sub> / W<sub>max</sub>)</TableHead>
-                              <TableHead className="text-right font-bold text-emerald-700 bg-emerald-50/50">Bobot Ideal (I<sub>i</sub>)</TableHead>
-                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {subKriteriaData.map((sub, idx) => (
-                              <TableRow key={idx}>
-                                 <TableCell className="text-center font-bold border-r bg-slate-50">{sub.kode}</TableCell>
-                                 <TableCell className="text-center font-mono text-[11px] text-muted-foreground">
-                                    {sub.eigen.toFixed(4)} ÷ {maxEigen.toFixed(4)}
-                                 </TableCell>
-                                 <TableCell className="text-right font-mono text-[11px] font-bold text-emerald-700 bg-emerald-50/20">
-                                    {sub.bobot.toFixed(4)}
-                                 </TableCell>
-                              </TableRow>
-                           ))}
-                        </TableBody>
-                     </Table>
-                  </div>
-               </div>
-            </div>
+               </TableBody>
+            </Table>
          </div>
       </div>
    );
