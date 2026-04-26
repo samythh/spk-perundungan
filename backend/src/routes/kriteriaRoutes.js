@@ -2,7 +2,6 @@
 
 const express = require('express');
 const router = express.Router();
-// Mengimpor koneksi database (Prisma)
 const prisma = require('../config/database');
 
 // ==========================================
@@ -10,8 +9,9 @@ const prisma = require('../config/database');
 // ==========================================
 router.get('/', async (req, res) => {
    try {
+      // PERBAIKAN: Mengurutkan berdasarkan 'kode' (bukan 'id')
       const kriteria = await prisma.kriteria.findMany({
-         orderBy: { id: 'asc' } // Mengurutkan data berdasarkan ID agar rapi
+         orderBy: { kode: 'asc' }
       });
 
       res.status(200).json({
@@ -33,16 +33,13 @@ router.get('/', async (req, res) => {
 // ==========================================
 router.post('/', async (req, res) => {
    try {
-      // Menangkap data yang dikirim dari form frontend
       const { kode, nama, keterangan } = req.body;
 
-      // Memerintahkan Prisma untuk menyimpan data baru ke tabel kriteria
       const newKriteria = await prisma.kriteria.create({
          data: {
             kode: kode,
             nama: nama,
             keterangan: keterangan,
-            // Nilai bobot biasanya dikosongkan (0) dulu sampai AHP dihitung ulang
             bobot: 0
          }
       });
@@ -64,19 +61,19 @@ router.post('/', async (req, res) => {
 // ==========================================
 // 3. UPDATE: Mengedit data kriteria (PUT)
 // ==========================================
-router.put('/:id', async (req, res) => {
+// PERBAIKAN: Menggunakan ':kode' sebagai parameter URL, bukan ':id'
+router.put('/:kode', async (req, res) => {
    try {
-      // Menangkap ID dari URL (misal: /api/kriteria/5)
-      const kriteriaId = parseInt(req.params.id);
-      const { kode, nama, keterangan } = req.body;
+      const kriteriaKode = req.params.kode;
+      const { nama, keterangan } = req.body;
 
-      // Memerintahkan Prisma untuk memperbarui data berdasarkan ID
+      // Memperbarui data berdasarkan 'kode'
       const updatedKriteria = await prisma.kriteria.update({
-         where: { id: kriteriaId },
+         where: { kode: kriteriaKode },
          data: {
-            kode: kode,
             nama: nama,
             keterangan: keterangan,
+            // Catatan: Biasanya 'kode' (Primary Key) tidak diizinkan untuk diubah
          }
       });
 
@@ -97,13 +94,13 @@ router.put('/:id', async (req, res) => {
 // ==========================================
 // 4. DELETE: Menghapus data kriteria (DELETE)
 // ==========================================
-router.delete('/:id', async (req, res) => {
+// PERBAIKAN: Menggunakan ':kode' sebagai parameter URL
+router.delete('/:kode', async (req, res) => {
    try {
-      const kriteriaId = parseInt(req.params.id);
+      const kriteriaKode = req.params.kode;
 
-      // Memerintahkan Prisma untuk menghapus baris data
       await prisma.kriteria.delete({
-         where: { id: kriteriaId }
+         where: { kode: kriteriaKode }
       });
 
       res.status(200).json({
