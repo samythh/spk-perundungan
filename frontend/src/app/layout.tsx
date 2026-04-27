@@ -1,14 +1,13 @@
 // File: frontend/src/app/layout.tsx
-
 import type { Metadata } from "next";
-// Mengimpor font modern Plus Jakarta Sans langsung dari Google Fonts via Next.js
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-// Menginisialisasi font dengan subset latin dan mengatur variabel CSS-nya
+import { ThemeProvider } from "@/components/theme-provider";
+
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-jakarta-sans", // Variabel ini akan kita gunakan di Tailwind
+  variable: "--font-jakarta-sans",
 });
 
 export const metadata: Metadata = {
@@ -22,10 +21,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      {/* Menerapkan font ke seluruh body aplikasi */}
-      <body className={`${jakartaSans.variable} font-sans antialiased bg-slate-50 text-slate-900`}>
-        {children}
+    <html lang="id" suppressHydrationWarning>
+      {/* Warna latar dasar aplikasi */}
+      <body className={`${jakartaSans.variable} font-sans antialiased bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50`}>
+
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        // PERBAIKAN: Baris 'disableTransitionOnChange' telah dihapus di sini
+        // agar efek transisi CSS (Fade) diizinkan berjalan saat tema diganti.
+        >
+          {children}
+        </ThemeProvider>
+
       </body>
     </html>
   );

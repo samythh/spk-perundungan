@@ -2,230 +2,234 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Users, ListChecks, Activity, ShieldAlert, BarChart3, PieChart, TrendingUp, AlertTriangle } from "lucide-react";
+import { 
+   Users, ListChecks, ShieldAlert, // PERBAIKAN: Menghapus 'Activity' yang sudah tidak dipakai
+   BarChart3, PieChart, TrendingUp, AlertTriangle, 
+   BrainCircuit, Sparkles, UserCheck, Database // PERBAIKAN: Menambahkan 'Database'
+} from "lucide-react";
 
-// 1. PENYESUAIAN INTERFACE: Menyelaraskan dengan skema AHP Absolut
 interface Siswa {
    id: number;
    nisn: string;
    nama: string;
    kelas: string;
+   nilai_akhir: number | null;
+   kategori: string | null;
 }
 
 interface Kriteria {
-   kode: string; // Menggunakan kode, bukan ID
+   kode: string;
    nama: string;
    bobot: number;
 }
 
-interface SubKriteria {
-   kode: string;
-   nama_sub: string;
-   bobot_ideal: number;
-}
-
-interface HasilAkhir extends Siswa {
-   totalSkor: number;
-   label: string;
-   warna: string;
-}
-
 export default function DashboardPage() {
-   const [siswa, setSiswa] = useState<Siswa[]>([]);
+   const [siswaSemua, setSiswaSemua] = useState<Siswa[]>([]);
+   const [siswaDinilai, setSiswaDinilai] = useState<Siswa[]>([]);
    const [kriteria, setKriteria] = useState<Kriteria[]>([]);
-   const [, setSubKriteria] = useState<SubKriteria[]>([]);
-   const [hasilAkhir, setHasilAkhir] = useState<HasilAkhir[]>([]);
    const [isLoading, setIsLoading] = useState(true);
-
-   // 2. ROMBAK TOTAL FUNGSI KALKULASI: Menggunakan WSM AHP Absolut
-   const kalkulasiHasil = useCallback((
-      dataSiswa: Siswa[],
-      dataKriteria: Kriteria[],
-      dataSubKriteria: SubKriteria[],
-      dataScores: Record<number, Record<string, string>>
-   ) => {
-      const ranking: HasilAkhir[] = dataSiswa.map(s => {
-         let totalSkor = 0;
-
-         // Kalikan Bobot Global Kriteria dengan Bobot Ideal Sub-Kriteria terpilih
-         dataKriteria.forEach(k => {
-            const subKodeTerpilih = dataScores[s.id]?.[k.kode];
-            if (subKodeTerpilih) {
-               const subTerpilih = dataSubKriteria.find(sub => sub.kode === subKodeTerpilih);
-               if (subTerpilih) {
-                  totalSkor += (k.bobot * subTerpilih.bobot_ideal);
-               }
-            }
-         });
-
-         // Kategori Risiko berdasarkan skala 0 - 1.0
-         let label = "Sangat Aman";
-         let warna = "bg-green-100 text-green-700";
-
-         if (totalSkor >= 0.8) {
-            label = "Sangat Parah (Bahaya)";
-            warna = "bg-red-100 text-red-700";
-         } else if (totalSkor >= 0.6) {
-            label = "Parah (Perhatian)";
-            warna = "bg-orange-100 text-orange-700";
-         } else if (totalSkor >= 0.4) {
-            label = "Sedang (Waspada)";
-            warna = "bg-yellow-100 text-yellow-700";
-         } else if (totalSkor >= 0.2) {
-            label = "Aman";
-            warna = "bg-blue-100 text-blue-700";
-         }
-
-         return { ...s, totalSkor, label, warna };
-      });
-
-      ranking.sort((a, b) => b.totalSkor - a.totalSkor);
-      setHasilAkhir(ranking);
-   }, []);
 
    const fetchData = useCallback(async () => {
       setIsLoading(true);
       try {
-         // PERBAIKAN FATAL: Memperbaiki URL string menjadi literal template
          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penilaian/data`);
+         if (!res.ok) throw new Error("Gagal mengambil data");
+         
          const json = await res.json();
 
          if (json.success) {
-            setSiswa(json.data.siswa);
+            const dataSiswa: Siswa[] = json.data.siswa;
+            setSiswaSemua(dataSiswa);
 
-            // Urutkan kriteria berdasarkan bobot tertinggi untuk grafik Pie Chart
+            // Filter siswa yang sudah dinilai & urutkan dari risiko tertinggi
+            const sudahDievaluasi = dataSiswa.filter(s => s.nilai_akhir !== null);
+            sudahDievaluasi.sort((a, b) => (b.nilai_akhir || 0) - (a.nilai_akhir || 0));
+            setSiswaDinilai(sudahDievaluasi);
+
+            // Urutkan kriteria berdasarkan bobot tertinggi
             const sortedKriteria = [...json.data.kriteria].sort((a, b) => b.bobot - a.bobot);
             setKriteria(sortedKriteria);
-
-            // Ambil data subkriteria dari backend
-            setSubKriteria(json.data.subKriteria);
-
-            // Mapping struktur data penilaian baru (menggunakan string kode)
-            const loadedScores: Record<number, Record<string, string>> = {};
-            json.data.penilaian.forEach((p: { siswa_id: number; kriteria_kode: string; subkriteria_kode: string }) => {
-               if (!loadedScores[p.siswa_id]) loadedScores[p.siswa_id] = {};
-               loadedScores[p.siswa_id][p.kriteria_kode] = p.subkriteria_kode;
-            });
-
-            kalkulasiHasil(json.data.siswa, sortedKriteria, json.data.subKriteria, loadedScores);
          }
       } catch (error) {
          console.error("Gagal menarik data dashboard:", error);
       } finally {
          setIsLoading(false);
       }
-   }, [kalkulasiHasil]);
+   }, []);
 
    useEffect(() => {
       fetchData();
    }, [fetchData]);
 
-   const top5Siswa = hasilAkhir.slice(0, 5);
-   // Mendeteksi jumlah siswa di zona Parah & Sangat Parah (Skor >= 0.6)
-   const jumlahRisikoTinggi = hasilAkhir.filter(h => h.totalSkor >= 0.6).length;
+   // Variabel Statistik
+   const top5Siswa = siswaDinilai.slice(0, 5);
+   const jumlahRisikoTinggi = siswaDinilai.filter(s => s.kategori?.includes("Parah")).length;
+   const persenSelesai = siswaSemua.length > 0 ? (siswaDinilai.length / siswaSemua.length) * 100 : 0;
+
+   // Fungsi utilitas warna bar chart
+   const getBarColor = (kategori: string | null) => {
+      if (kategori?.includes("Sangat Parah")) return "from-red-500 to-rose-600 shadow-red-200";
+      if (kategori?.includes("Parah")) return "from-orange-400 to-orange-500 shadow-orange-200";
+      if (kategori?.includes("Sedang")) return "from-amber-400 to-amber-500 shadow-amber-200";
+      return "from-blue-500 to-indigo-600 shadow-blue-200";
+   };
+
+   // Fungsi utilitas lencana tabel
+   const getBadgeStyle = (kategori: string | null) => {
+      if (kategori?.includes("Sangat Parah")) return "bg-red-100 text-red-700 border-red-200";
+      if (kategori?.includes("Parah")) return "bg-orange-100 text-orange-700 border-orange-200";
+      if (kategori?.includes("Sedang")) return "bg-amber-100 text-amber-700 border-amber-200";
+      if (kategori?.includes("Rentan")) return "bg-blue-100 text-blue-700 border-blue-200";
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
+   };
 
    if (isLoading) {
       return (
-         <div className="flex h-[80vh] flex-col justify-center items-center text-slate-500">
-            <Activity className="animate-pulse mb-4 text-primary" size={40} />
-            <p className="font-medium animate-pulse text-sm">Memuat data dashboard...</p>
+         <div className="flex h-[80vh] flex-col justify-center items-center text-slate-400">
+            <div className="relative w-16 h-16 mb-4">
+               <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+               <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p className="font-medium animate-pulse text-sm tracking-wide">Mempersiapkan Ruang Komando...</p>
          </div>
       );
    }
 
    return (
-      <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
 
-         <div className="mb-6">
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Dashboard Utama</h1>
-            <p className="text-slate-500 mt-1 text-sm">Ringkasan hasil Sistem Pendukung Keputusan Deteksi Perundungan SMAN 2 Padang.</p>
+         {/* HEADER DASHBOARD */}
+         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-linear-to-r from-slate-900 to-slate-800 p-8 rounded-2xl shadow-lg text-white relative overflow-hidden">
+            <div className="absolute -right-10 -top-10 opacity-10">
+               <BrainCircuit size={180} />
+            </div>
+            <div className="relative z-10">
+               <div className="flex items-center gap-2 mb-2 text-blue-300 font-medium text-sm tracking-widest uppercase">
+                  <Sparkles size={16} /> Sistem Pendukung Keputusan
+               </div>
+               <h1 className="text-3xl font-extrabold tracking-tight">Dashboard Eksekutif</h1>
+               <p className="text-slate-300 mt-2 max-w-xl text-sm leading-relaxed">
+                  Pemantauan waktu nyata kerentanan perundungan siswa SMA Negeri 2 Padang berdasarkan analisis <strong>AHP Absolut</strong>.
+               </p>
+            </div>
          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-               <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+         {/* KARTU STATISTIK (TOP ROW) */}
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all group">
+               <div className="p-3.5 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <Users size={24} />
                </div>
                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Siswa</p>
-                  <p className="text-2xl font-extrabold text-slate-800">{siswa.length} <span className="text-xs font-medium text-slate-400 normal-case">Orang</span></p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Populasi</p>
+                  <p className="text-2xl font-black text-slate-800">{siswaSemua.length} <span className="text-xs font-medium text-slate-400 normal-case">Siswa</span></p>
                </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center relative overflow-hidden hover:shadow-md transition-all">
+               <div className="flex justify-between items-start mb-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Progres Evaluasi</p>
+                  <UserCheck size={16} className="text-emerald-500" />
+               </div>
+               <div className="flex items-end gap-2 mb-2">
+                  <p className="text-2xl font-black text-slate-800">{siswaDinilai.length}</p>
+                  <p className="text-xs font-medium text-slate-400 mb-1">/ {siswaSemua.length} Selesai</p>
+               </div>
+               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${persenSelesai}%` }}></div>
+               </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all group">
+               <div className="p-3.5 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
                   <ListChecks size={24} />
                </div>
                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Jumlah Kriteria</p>
-                  <p className="text-2xl font-extrabold text-slate-800">{kriteria.length} <span className="text-xs font-medium text-slate-400 normal-case">Parameter</span></p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Parameter Ukur</p>
+                  <p className="text-2xl font-black text-slate-800">{kriteria.length} <span className="text-xs font-medium text-slate-400 normal-case">Kriteria</span></p>
                </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-               <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
+            <div className="bg-white p-5 rounded-2xl border border-red-100 shadow-[0_2px_10px_-3px_rgba(239,68,68,0.2)] flex items-center gap-4">
+               <div className="p-3.5 bg-red-100 text-red-600 rounded-xl animate-pulse">
                   <ShieldAlert size={24} />
                </div>
                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Metode SPK</p>
-                  <p className="text-2xl font-extrabold text-slate-800">AHP Absolut</p>
+                  <p className="text-xs font-bold text-red-500 uppercase tracking-wider mb-0.5">Risiko Tinggi</p>
+                  <p className="text-2xl font-black text-red-700">{jumlahRisikoTinggi} <span className="text-xs font-medium text-red-400 normal-case">Siswa</span></p>
                </div>
             </div>
-
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-            <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-               <div className="flex items-center gap-2 mb-4 border-b pb-3">
-                  <BarChart3 className="text-primary" size={18} />
-                  <h2 className="text-base font-bold text-slate-800">Grafik Kerentanan Tertinggi (Top 5)</h2>
+         {/* AREA GRAFIK (MIDDLE ROW) */}
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* GRAFIK BAR - TOP 5 */}
+            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+               <div className="flex justify-between items-center mb-6">
+                  <div>
+                     <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <BarChart3 className="text-primary" size={20} />
+                        Peta Kerentanan Tertinggi (Top 5)
+                     </h2>
+                     <p className="text-xs text-slate-500 mt-1">Berdasarkan skor Absolut AHP (Mendekati 1.0 = Semakin Bahaya)</p>
+                  </div>
                </div>
 
-               <div className="grow flex items-end justify-around gap-2 mt-2 h-48 pt-4">
-                  {top5Siswa.map((s, idx) => {
-                     // Karena AHP Absolut nilai maksimalnya 1.0, persentase didapat langsung dari (Skor * 100)
-                     const heightPercent = s.totalSkor > 1 ? 100 : s.totalSkor * 100;
-                     const barColor = s.totalSkor >= 0.8 ? 'bg-red-500' : s.totalSkor >= 0.6 ? 'bg-orange-500' : s.totalSkor >= 0.4 ? 'bg-amber-500' : 'bg-primary';
+               <div className="grow flex items-end justify-around gap-4 mt-4 h-56 pt-6 border-b border-slate-100/80 pb-2 relative">
+                  <div className="absolute top-1/2 w-full border-t border-dashed border-slate-200 z-0"></div>
+                  
+                  {top5Siswa.length === 0 ? (
+                     <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm z-10">Belum ada data evaluasi.</div>
+                  ) : top5Siswa.map((s, idx) => {
+                     const heightPercent = (s.nilai_akhir || 0) * 100;
+                     const gradientColor = getBarColor(s.kategori);
 
                      return (
-                        <div key={s.id} className="w-1/6 flex flex-col items-center justify-end h-full group">
-                           <div className="text-[11px] font-bold text-slate-500 mb-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {s.totalSkor.toFixed(4)}
+                        <div key={s.id} className="w-1/5 flex flex-col items-center justify-end h-full group z-10 cursor-crosshair">
+                           <div className="text-[12px] font-black text-slate-700 mb-2 opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                              {(s.nilai_akhir || 0).toFixed(4)}
                            </div>
-                           <div
-                              className={`w-full max-w-12.5 rounded-t-md transition-all duration-1000 ease-out shadow-sm relative overflow-hidden ${barColor}`}
-                              style={{ height: `${heightPercent}%` }}
-                           >
-                              <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent"></div>
+                           
+                           <div className="w-full max-w-15 h-full flex items-end relative">
+                              <div
+                                 className={`w-full rounded-t-xl bg-linear-to-t ${gradientColor} shadow-lg transition-all duration-1000 ease-out relative overflow-hidden`}
+                                 style={{ height: `${heightPercent}%`, minHeight: '5%' }}
+                              >
+                                 <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                              </div>
                            </div>
-                           <div className="mt-2 text-[11px] font-bold text-slate-700 text-center truncate w-full px-1" title={s.nama}>
+                           
+                           <div className="mt-3 text-xs font-bold text-slate-700 text-center truncate w-full px-1" title={s.nama}>
                               {s.nama.split(' ')[0]}
                            </div>
-                           <div className="text-[9px] text-slate-400 font-mono mt-0.5">Rank {idx + 1}</div>
+                           <div className="text-[10px] text-slate-400 font-mono mt-0.5 bg-slate-100 px-2 py-0.5 rounded-full">Rank {idx + 1}</div>
                         </div>
                      );
                   })}
                </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-               <div className="flex items-center gap-2 mb-4 border-b pb-3">
-                  <PieChart className="text-emerald-500" size={18} />
-                  <h2 className="text-base font-bold text-slate-800">Distribusi Bobot Kriteria</h2>
+            {/* GRAFIK DISTRIBUSI BOBOT KRITERIA */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+               <div className="mb-6">
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                     <PieChart className="text-indigo-500" size={20} />
+                     Pengaruh Kriteria
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">Distribusi bobot kepentingan global (Eigenvector).</p>
                </div>
 
-               <div className="grow flex flex-col justify-center space-y-4">
+               <div className="grow flex flex-col justify-center space-y-5">
                   {kriteria.map((k) => (
                      <div key={k.kode} className="group">
-                        <div className="flex justify-between items-end mb-1">
-                           <span className="text-xs font-bold text-slate-700 group-hover:text-primary transition-colors">{k.kode} - {k.nama}</span>
-                           <span className="text-[11px] font-mono font-bold text-slate-500">{(k.bobot * 100).toFixed(1)}%</span>
+                        <div className="flex justify-between items-end mb-2">
+                           <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">{k.kode} - {k.nama}</span>
+                           <span className="text-xs font-mono font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{(k.bobot * 100).toFixed(1)}%</span>
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden shadow-inner">
                            <div
-                              className="bg-emerald-500 h-full rounded-full transition-all duration-1000 ease-out"
+                              className="bg-linear-to-r from-indigo-400 to-indigo-600 h-full rounded-full transition-all duration-1000 ease-out"
                               style={{ width: `${k.bobot * 100}%` }}
                            ></div>
                         </div>
@@ -236,40 +240,50 @@ export default function DashboardPage() {
 
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+         {/* AREA BAWAH (TABLE & INSIGHT) */}
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-               <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-                  <TrendingUp className="text-primary" size={18} />
-                  <h2 className="text-base font-bold text-slate-800">Hasil Ranking Prioritas (Top 5)</h2>
+            {/* TABEL PREVIEW RANKING */}
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+               <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <TrendingUp className="text-primary" size={18} />
+                     <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Preview Ranking Penanganan</h2>
+                  </div>
+                  <a href="/dashboard/ahp/hasil" className="text-xs font-bold text-primary hover:text-blue-800 hover:underline">Lihat Laporan Lengkap &rarr;</a>
                </div>
-               <div className="overflow-x-auto p-2">
+               
+               <div className="overflow-x-auto p-2 grow">
                   <table className="w-full text-sm text-left">
                      <thead>
-                        <tr className="border-b border-slate-200 text-slate-500">
-                           <th className="py-2.5 px-3 font-bold w-12 text-center text-xs">Rank</th>
-                           <th className="py-2.5 px-3 font-bold text-xs">Nama Siswa</th>
-                           <th className="py-2.5 px-3 font-bold text-center text-xs">Kelas</th>
-                           <th className="py-2.5 px-3 font-bold text-center text-xs">Skor AHP</th>
-                           <th className="py-2.5 px-3 font-bold text-center text-xs">Status</th>
+                        <tr className="text-slate-400 border-b border-slate-100">
+                           <th className="py-3 px-4 font-bold w-12 text-center text-xs uppercase tracking-wider">Rank</th>
+                           <th className="py-3 px-4 font-bold text-xs uppercase tracking-wider">Identitas Siswa</th>
+                           <th className="py-3 px-4 font-bold text-center text-xs uppercase tracking-wider">Skor AHP</th>
+                           <th className="py-3 px-4 font-bold text-center text-xs uppercase tracking-wider">Status Evaluasi</th>
                         </tr>
                      </thead>
                      <tbody>
                         {top5Siswa.length === 0 ? (
-                           <tr><td colSpan={5} className="text-center py-5 text-slate-400 text-xs">Belum ada data evaluasi.</td></tr>
+                           <tr><td colSpan={4} className="text-center py-10 text-slate-400 text-sm">Belum ada data siswa yang dievaluasi.</td></tr>
                         ) : top5Siswa.map((s, idx) => (
-                           <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 last:border-0">
-                              <td className="py-2 px-3 text-center">
-                                 <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full font-bold text-[10px] ${idx === 0 ? 'bg-red-100 text-red-700' : idx === 1 ? 'bg-orange-100 text-orange-700' : idx === 2 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                           <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors last:border-0 group">
+                              <td className="py-3 px-4 text-center">
+                                 <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-xs shadow-sm
+                                    ${idx === 0 ? 'bg-amber-400 text-white' : idx === 1 ? 'bg-slate-300 text-white' : idx === 2 ? 'bg-orange-300 text-white' : 'bg-slate-100 text-slate-500'}`}>
                                     {idx + 1}
                                  </span>
                               </td>
-                              <td className="py-2 px-3 font-bold text-slate-800 text-[13px]">{s.nama}</td>
-                              <td className="py-2 px-3 text-center text-slate-600 text-[13px]">{s.kelas}</td>
-                              <td className="py-2 px-3 text-center font-mono font-bold text-primary text-[13px]">{s.totalSkor.toFixed(4)}</td>
-                              <td className="py-2 px-3 text-center">
-                                 <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-extrabold tracking-wider ${s.warna}`}>
-                                    {s.label.split(' ')[0]}
+                              <td className="py-3 px-4">
+                                 <div className="font-bold text-slate-800 text-[13px] group-hover:text-primary transition-colors">{s.nama}</div>
+                                 <div className="text-[11px] text-slate-400 mt-0.5">{s.kelas} • NISN: {s.nisn}</div>
+                              </td>
+                              <td className="py-3 px-4 text-center font-mono font-black text-slate-700 text-[13px]">
+                                 {(s.nilai_akhir || 0).toFixed(4)}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                 <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-extrabold tracking-wider border shadow-sm ${getBadgeStyle(s.kategori)}`}>
+                                    {s.kategori?.split(' ')[0]}
                                  </span>
                               </td>
                            </tr>
@@ -279,28 +293,40 @@ export default function DashboardPage() {
                </div>
             </div>
 
-            <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm flex flex-col">
-               <div className="flex items-center gap-2 mb-3 border-b border-blue-200/50 pb-3">
-                  <AlertTriangle className="text-red-500" size={20} />
-                  <h2 className="text-base font-bold text-blue-900">Kesimpulan Analisis</h2>
+            {/* KOTAK INSIGHT / KESIMPULAN CERDAS */}
+            <div className="bg-linear-to-br from-blue-50 to-indigo-50/50 p-6 rounded-2xl border border-blue-100 shadow-sm flex flex-col relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
+               
+               <div className="flex items-center gap-2 mb-4 border-b border-blue-200/50 pb-4 relative z-10">
+                  <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                     <AlertTriangle size={18} />
+                  </div>
+                  <h2 className="text-base font-bold text-slate-800">Insight Sistem</h2>
                </div>
 
-               <div className="grow space-y-3 text-[13px] text-blue-800 leading-relaxed">
-                  {siswa.length === 0 ? (
-                     <p>Belum ada data evaluasi yang dapat disimpulkan.</p>
+               <div className="grow space-y-4 text-sm text-slate-700 leading-relaxed relative z-10 flex flex-col justify-center">
+                  {siswaDinilai.length === 0 ? (
+                     <div className="text-center text-slate-500 opacity-70">
+                        <Database size={40} className="mx-auto mb-3" />
+                        <p>Lakukan evaluasi siswa di menu <strong>Proses AHP</strong> untuk melihat insight cerdas di sini.</p>
+                     </div>
                   ) : (
                      <>
-                        <p>
-                           Berdasarkan perhitungan metode AHP Absolut terhadap <strong>{siswa.length} siswa</strong>, ditemukan <strong>{jumlahRisikoTinggi} siswa</strong> terindikasi berada di zona <strong className="text-red-700">Risiko Tinggi (Parah & Sangat Parah)</strong>.
+                        <p className="bg-white/60 p-3 rounded-xl border border-white">
+                           Terdapat <strong className="text-red-600 text-lg">{jumlahRisikoTinggi} siswa</strong> yang saat ini masuk dalam radar <strong>Risiko Tinggi & Parah</strong>.
                         </p>
+                        
                         {top5Siswa.length > 0 && (
-                           <p>
-                              Siswa <strong>{top5Siswa[0].nama}</strong> berada di peringkat pertama kerentanan. Kriteria utama pemicunya adalah <strong>{kriteria[0]?.nama}</strong> ({(kriteria[0]?.bobot * 100).toFixed(1)}%).
+                           <p className="bg-white/60 p-3 rounded-xl border border-white">
+                              Prioritas pemanggilan utama jatuh kepada <strong>{top5Siswa[0].nama}</strong> dengan tingkat kerentanan <strong>{(top5Siswa[0].nilai_akhir || 0).toFixed(4)}</strong>. 
                            </p>
                         )}
-                        <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200 shadow-sm">
-                           <p className="font-bold text-slate-800 mb-1 text-xs">Rekomendasi:</p>
-                           <p className="text-slate-600 text-[11px] leading-tight">Prioritaskan investigasi, pemanggilan, dan pendampingan psikologis untuk siswa di Top 5 kerentanan ini.</p>
+                        
+                        <div className="mt-auto pt-2">
+                           <div className="p-3 bg-slate-800 text-white rounded-xl shadow-md border border-slate-700">
+                              <p className="font-bold text-xs text-blue-300 uppercase tracking-wider mb-1">Tindakan Disarankan</p>
+                              <p className="text-xs leading-tight text-slate-300">Cetak laporan hasil, kemudian jadwalkan sesi konseling tertutup untuk siswa di peringkat Top 5 secepatnya.</p>
+                           </div>
                         </div>
                      </>
                   )}

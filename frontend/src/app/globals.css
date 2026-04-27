@@ -133,6 +133,11 @@
     @apply border-border outline-ring/50;
   }
 
+  /* PERBAIKAN: Menambahkan instruksi efek Fade/Pudar ke seluruh partikel aplikasi */
+  *, ::before, ::after {
+    @apply transition-colors duration-700 ease-in-out;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

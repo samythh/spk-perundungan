@@ -1,10 +1,9 @@
 // File: frontend/src/app/(dashboard)/layout.tsx
-
-import { SidebarProvider } from "@/components/ui/sidebar";
+import * as React from "react";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-
-// MENGATASI ERROR: Mengimpor TooltipProvider dari Shadcn
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeToggle } from "@/components/theme-toggle"; // Impor komponen toggle
 
 export default function DashboardLayout({
    children,
@@ -12,24 +11,35 @@ export default function DashboardLayout({
    children: React.ReactNode;
 }) {
    return (
-      // Membungkus seluruh aplikasi Dashboard dengan TooltipProvider
-      // Hal ini mengizinkan elemen apapun di dalam Dashboard untuk memunculkan tooltip
-      <TooltipProvider>
+      <TooltipProvider delayDuration={300}>
          <SidebarProvider>
-            <div className="flex min-h-screen w-full bg-slate-50/50">
+            <AppSidebar />
 
-               <AppSidebar />
+            <div className="flex flex-col flex-1 w-full min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
 
-               <main className="flex-1 overflow-y-auto">
-                  <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-white px-6 sticky top-0 z-10 shadow-sm">
-                     {/* Menggunakan w-px sesuai saran kerapian Tailwind sebelumnya */}
-                     <div className="h-4 w-px bg-slate-200 mx-2" />
-                     <h2 className="text-sm font-semibold text-slate-700">Panel Administrator SMAN 2 Padang</h2>
-                  </header>
+               {/* HEADER: justify-between membagi elemen ke sisi kiri dan kanan */}
+               <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-6 shadow-sm transition-colors duration-300">
 
-                  <div className="p-6 md:p-10">
-                     {children}
+                  {/* Bagian Kiri: Tombol Menu & Judul */}
+                  <div className="flex items-center gap-4">
+                     <SidebarTrigger className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50" />
+                     <div className="flex items-center gap-3">
+                        <div className="h-5 w-1.5 bg-primary rounded-full"></div>
+                        <h1 className="font-extrabold text-slate-800 dark:text-slate-100 tracking-tight text-lg">
+                           Panel Administrator SMAN 2 Padang
+                        </h1>
+                     </div>
                   </div>
+
+                  {/* Bagian Kanan: Tombol Toggle Tema */}
+                  <div className="flex items-center">
+                     <ThemeToggle />
+                  </div>
+
+               </header>
+
+               <main className="flex-1 w-full p-4 md:p-6 lg:p-8">
+                  {children}
                </main>
 
             </div>
