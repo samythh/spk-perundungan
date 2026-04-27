@@ -133,9 +133,9 @@
     @apply border-border outline-ring/50;
   }
 
-  /* PERBAIKAN: Menambahkan instruksi efek Fade/Pudar ke seluruh partikel aplikasi */
+  /* PERBAIKAN: Mengurangi durasi dari 700ms menjadi 300ms agar lebih responsif */
   *, ::before, ::after {
-    @apply transition-colors duration-700 ease-in-out;
+    @apply transition-colors duration-300 ease-in-out;
   }
 
   body {
