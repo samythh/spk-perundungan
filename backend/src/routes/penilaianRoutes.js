@@ -3,19 +3,14 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
 
-// Endpoint 1: Mengambil data Siswa, Kriteria Utama, dan Opsi Tingkat Risiko (T1-T5)
+// ==============================================================
+// ENDPOINT 1: MENGAMBIL DATA (KODE ASLI ANDA)
+// ==============================================================
 router.get('/data', async (req, res) => {
    try {
-      // 1. Ambil semua siswa
       const siswa = await prisma.siswa.findMany();
-
-      // 2. Ambil kriteria utama (C1-C5)
       const kriteria = await prisma.kriteria.findMany({ orderBy: { kode: 'asc' } });
-
-      // 3. AMBIL DATA SUB-KRITERIA (PENTING: Ini untuk dropdown di Frontend)
       const subKriteria = await prisma.subKriteria.findMany({ orderBy: { kode: 'asc' } });
-
-      // 4. Ambil data penilaian yang sudah ada (menggunakan tabel penilaian yang baru)
       const penilaian = await prisma.penilaian.findMany();
 
       res.json({
@@ -27,39 +22,102 @@ router.get('/data', async (req, res) => {
    }
 });
 
-// Endpoint 2: Menyimpan pilihan Tingkat Risiko (T1-T5) untuk setiap kriteria
-router.post('/simpan', async (req, res) => {
+// ==============================================================
+// ENDPOINT 2: SIMPAN & KALKULASI AHP ABSOLUT (DIROMBAK)
+// ==============================================================
+router.post('/simpan-evaluasi', async (req, res) => {
    try {
-      const { scores } = req.body;
-      // Format scores yang diharapkan: [{ siswa_id: 1, kriteria_kode: "C1", subkriteria_kode: "T2" }, ...]
+      // Menangkap objek penilaian dari frontend
+      // Format: { "1": { "C1": "T1", "C2": "T3" }, "2": { "C1": "T2" } }
+      const { penilaian } = req.body;
 
-      // Menggunakan Transaction agar data konsisten
-      await prisma.$transaction(
-         scores.map((n) =>
-            prisma.penilaian.upsert({
-               where: {
-                  // Menggunakan unique constraint yang kita buat di schema.prisma
-                  siswa_id_kriteria_kode: {
-                     siswa_id: parseInt(n.siswa_id),
-                     kriteria_kode: n.kriteria_kode
-                  }
-               },
-               // Jika sudah ada, update pilihannya (misal dari T3 jadi T1)
-               update: { subkriteria_kode: n.subkriteria_kode },
-               // Jika belum ada, buat record penilaian baru
-               create: {
-                  siswa_id: parseInt(n.siswa_id),
-                  kriteria_kode: n.kriteria_kode,
-                  subkriteria_kode: n.subkriteria_kode
+      if (!penilaian || Object.keys(penilaian).length === 0) {
+         return res.status(400).json({ success: false, message: "Data penilaian kosong." });
+      }
+
+      // 1. Ambil data master bobot dari database
+      const [kriteriaList, subKriteriaList] = await Promise.all([
+         prisma.kriteria.findMany(),
+         prisma.subKriteria.findMany()
+      ]);
+
+      // 2. Buat kamus data (Dictionary) untuk pencarian instan
+      const bobotKriteria = {};
+      kriteriaList.forEach(k => bobotKriteria[k.kode] = k.bobot);
+
+      const bobotSubKriteria = {};
+      subKriteriaList.forEach(s => bobotSubKriteria[s.kode] = s.bobot_ideal); // Memanggil bobot_ideal, BUKAN eigen
+
+      const dataPenilaianBaru = [];
+      const updateSiswaPromises = [];
+      const siswaIds = Object.keys(penilaian).map(id => parseInt(id));
+
+      // 3. Looping untuk memproses dan mengalkulasi setiap siswa
+      for (const siswaIdStr in penilaian) {
+         const siswaId = parseInt(siswaIdStr);
+         const evaluasiSiswa = penilaian[siswaIdStr];
+
+         let skorAkhir = 0;
+
+         // 3a. Loop setiap kriteria yang dinilai (C1, C2, dst)
+         for (const kriteriaKode in evaluasiSiswa) {
+            const subKode = evaluasiSiswa[kriteriaKode]; // Mendapatkan kode T (misal: "T1")
+
+            if (subKode) { // Pastikan sel tidak kosong
+               // Siapkan raw data untuk tabel Penilaian
+               dataPenilaianBaru.push({
+                  siswa_id: siswaId,
+                  kriteria_kode: kriteriaKode,
+                  subkriteria_kode: subKode
+               });
+
+               // KALKULASI AHP ABSOLUT: (Bobot Kriteria × Bobot Ideal Sub-Kriteria)
+               const bKriteria = bobotKriteria[kriteriaKode] || 0;
+               const bSubKriteria = bobotSubKriteria[subKode] || 0;
+               skorAkhir += (bKriteria * bSubKriteria);
+            }
+         }
+
+         // 3b. Tentukan Kategori Berdasarkan Skor Akhir
+         const persentase = skorAkhir * 100;
+         let kategoriLabel = "Sangat Aman";
+
+         if (persentase >= 80) kategoriLabel = "Sangat Parah (Risiko Tinggi)";
+         else if (persentase >= 60) kategoriLabel = "Parah";
+         else if (persentase >= 40) kategoriLabel = "Sedang";
+         else if (persentase >= 20) kategoriLabel = "Rentan";
+
+         // 3c. Siapkan tumpukan perintah update untuk tabel Siswa
+         updateSiswaPromises.push(
+            prisma.siswa.update({
+               where: { id: siswaId },
+               data: {
+                  nilai_akhir: skorAkhir,
+                  kategori: kategoriLabel
                }
             })
-         )
-      );
+         );
+      }
 
-      res.json({ success: true, message: "Penilaian tingkat risiko berhasil direkam!" });
+      // 4. EKSEKUSI DATABASE DENGAN TRANSAKSI (Melanjutkan gaya kode aman Anda)
+      await prisma.$transaction([
+         // Hapus riwayat penilaian lama khusus untuk siswa-siswa yang sedang dinilai ini
+         prisma.penilaian.deleteMany({
+            where: { siswa_id: { in: siswaIds } }
+         }),
+         // Masukkan kumpulan penilaian baru secara massal
+         prisma.penilaian.createMany({
+            data: dataPenilaianBaru
+         }),
+         // Eksekusi pembaruan nilai akhir dan kategori pada tabel Siswa
+         ...updateSiswaPromises
+      ]);
+
+      res.status(200).json({ success: true, message: "Evaluasi AHP Absolut berhasil disimpan dan dikalkulasi." });
+
    } catch (error) {
-      console.error(error);
-      res.status(500).json({ success: false, message: "Gagal menyimpan: " + error.message });
+      console.error("Kesalahan Kalkulasi Penilaian:", error);
+      res.status(500).json({ success: false, message: "Terjadi kesalahan internal server saat memproses penilaian." });
    }
 });
 
