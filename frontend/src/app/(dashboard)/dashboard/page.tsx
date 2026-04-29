@@ -107,9 +107,7 @@ export default function DashboardPage() {
                <div className="flex items-center gap-2 mb-2 text-blue-300 font-medium text-sm tracking-widest uppercase">
                   <Sparkles size={16} /> Sistem Pendukung Keputusan
                </div>
-               <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
-
-               {/* PERBAIKAN 1: Teks header dipersingkat dan dipertegas */}
+               <h1 className="text-3xl font-extrabold tracking-tight">Dashboard Eksekutif</h1>
                <p className="text-slate-300 mt-2 max-w-xl text-sm leading-relaxed">
                   Pusat kendali dan analisis kerentanan siswa SMA Negeri 2 Padang berbasis metode <strong>AHP Absolut</strong>.
                </p>
@@ -178,7 +176,7 @@ export default function DashboardPage() {
                   </div>
                </div>
 
-               <div className="grow flex items-end justify-around gap-4 mt-4 h-56 pt-6 border-b border-slate-100/80 pb-2 relative">
+               <div className="grow flex items-end justify-around gap-2 mt-2 h-64 pt-6 pb-2 relative">
                   <div className="absolute top-1/2 w-full border-t border-dashed border-slate-200 z-0"></div>
 
                   {top5Siswa.length === 0 ? (
@@ -188,12 +186,12 @@ export default function DashboardPage() {
                      const gradientColor = getBarColor(s.kategori);
 
                      return (
-                        <div key={s.id} className="w-1/5 flex flex-col items-center justify-end h-full group z-10 cursor-crosshair">
+                        <div key={s.id} className="w-1/5 flex flex-col items-center h-full group z-10 cursor-crosshair">
                            <div className="text-[12px] font-black text-slate-700 mb-2 opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
                               {(s.nilai_akhir || 0).toFixed(4)}
                            </div>
 
-                           <div className="w-full max-w-15 h-full flex items-end relative">
+                           <div className="w-full max-w-14 flex-1 flex items-end relative">
                               <div
                                  className={`w-full rounded-t-xl bg-linear-to-t ${gradientColor} shadow-lg transition-all duration-1000 ease-out relative overflow-hidden`}
                                  style={{ height: `${heightPercent}%`, minHeight: '5%' }}
@@ -202,13 +200,14 @@ export default function DashboardPage() {
                               </div>
                            </div>
 
-                           {/* PERBAIKAN 2: Memaksa teks nama siswa terpotong dengan 'truncate whitespace-nowrap' jika kepanjangan, dan margin bawah agar tidak menabrak Rank */}
-                           <div className="mt-3 mb-1 text-xs font-bold text-slate-700 text-center w-full px-1 truncate whitespace-nowrap" title={s.nama}>
-                              {s.nama.split(' ')[0]} {/* Mengambil nama depan saja */}
-                           </div>
-
-                           <div className="text-[10px] text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
-                              Rank {idx + 1}
+                           <div className="flex flex-col items-center justify-start mt-3 w-full h-14">
+                              {/* PERBAIKAN: Menghapus .split(' ')[0] agar nama "Siswa 1" dll muncul sepenuhnya */}
+                              <div className="text-xs font-bold text-slate-700 text-center w-full px-1 truncate" title={s.nama}>
+                                 {s.nama}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded-full mt-1.5 shrink-0">
+                                 Rank {idx + 1}
+                              </div>
                            </div>
                         </div>
                      );
