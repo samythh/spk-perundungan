@@ -207,6 +207,27 @@ export default function PerbandinganSubKriteriaPage() {
       return `${target} ${desc}`;
    };
 
+   // PERBAIKAN 1: Menambahkan Array Opsi AHP Lengkap (Sama seperti Kriteria)
+   const ahpOptions = [
+      { val: 1 / 9, label: "1/9 (0.111)" },
+      { val: 1 / 8, label: "1/8 (0.125)" },
+      { val: 1 / 7, label: "1/7 (0.143)" },
+      { val: 1 / 6, label: "1/6 (0.167)" },
+      { val: 1 / 5, label: "1/5 (0.200)" },
+      { val: 1 / 4, label: "1/4 (0.250)" },
+      { val: 1 / 3, label: "1/3 (0.333)" },
+      { val: 1 / 2, label: "1/2 (0.500)" },
+      { val: 1, label: "1 (Sama)" },
+      { val: 2, label: "2" },
+      { val: 3, label: "3" },
+      { val: 4, label: "4" },
+      { val: 5, label: "5" },
+      { val: 6, label: "6" },
+      { val: 7, label: "7" },
+      { val: 8, label: "8" },
+      { val: 9, label: "9" }
+   ];
+
    const colSums: Record<string, number> = {};
    if (subKriteria.length > 0) {
       subKriteria.forEach(k => colSums[k.kode] = 0);
@@ -399,9 +420,17 @@ export default function PerbandinganSubKriteriaPage() {
                                                    const isDiagonal = i === j; const isSegitigaBawah = i > j; const isErrorCell = errorPairs.has(`${baris.kode}-${kolom.kode}`);
                                                    return (
                                                       <TableCell key={kolom.kode} className={`p-2 border text-center transition-colors ${isDiagonal ? 'bg-slate-50/50' : isErrorCell ? 'bg-red-100/80 border-red-300' : isSegitigaBawah ? 'bg-slate-50/50' : ''}`}>
-                                                         {isDiagonal ? <div className="text-slate-400 font-bold">1</div> : isSegitigaBawah ? <div className={`font-mono text-sm ${isErrorCell ? 'text-red-600 font-bold' : 'text-slate-400'}`}>{(matrix[baris.kode]?.[kolom.kode] || 1).toFixed(3)}</div> : (
+                                                         {isDiagonal ? (
+                                                            <div className="text-slate-400 font-bold">1</div>
+                                                         ) : isSegitigaBawah ? (
+                                                            // PERBAIKAN 2: Membersihkan nol menggunakan parseFloat()
+                                                            <div className={`font-mono text-sm ${isErrorCell ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                                                               {parseFloat((matrix[baris.kode]?.[kolom.kode] || 1).toFixed(3))}
+                                                            </div>
+                                                         ) : (
+                                                            // PERBAIKAN 3: Memanggil ahpOptions yang sudah ada pecahan 1/x
                                                             <select className={`w-full border p-2 rounded-md text-center font-semibold focus:outline-none cursor-pointer ${isErrorCell ? 'bg-red-50 text-red-700 border-red-400' : 'bg-blue-50 text-blue-700 border-primary/30'}`} value={matrix[baris.kode]?.[kolom.kode] || 1} onChange={(e) => handleMatrixChange(baris.kode, kolom.kode, parseFloat(e.target.value))}>
-                                                               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => <option key={num} value={num}>{num}</option>)}
+                                                               {ahpOptions.map(opt => <option key={opt.val} value={opt.val}>{opt.label}</option>)}
                                                             </select>
                                                          )}
                                                       </TableCell>
@@ -412,7 +441,10 @@ export default function PerbandinganSubKriteriaPage() {
                                           <TableRow className="bg-slate-100">
                                              <TableCell className="font-bold text-center border text-slate-600">Jumlah (Σ)</TableCell>
                                              {subKriteria.map((kolom) => (
-                                                <TableCell key={`sum-${kolom.kode}`} className="font-bold font-mono text-center border text-slate-700">{colSums[kolom.kode]?.toFixed(3)}</TableCell>
+                                                // PERBAIKAN 4: Membersihkan nol dari baris jumlah
+                                                <TableCell key={`sum-${kolom.kode}`} className="font-bold font-mono text-center border text-slate-700">
+                                                   {parseFloat((colSums[kolom.kode] || 0).toFixed(3))}
+                                                </TableCell>
                                              ))}
                                           </TableRow>
                                        </TableBody>
@@ -458,7 +490,7 @@ export default function PerbandinganSubKriteriaPage() {
                                           return (
                                              <TableCell key={kolom.kode} className="p-3 border text-center font-mono">
                                                 <div className="font-bold text-blue-700 text-sm">{normalisasi.toFixed(4)}</div>
-                                                <div className="text-[10px] text-slate-400 mt-1">({valAwal.toFixed(3)} / {sumKolom.toFixed(3)})</div>
+                                                <div className="text-[10px] text-slate-400 mt-1">({parseFloat(valAwal.toFixed(3))} / {parseFloat(sumKolom.toFixed(3))})</div>
                                              </TableCell>
                                           );
                                        })}
@@ -467,7 +499,7 @@ export default function PerbandinganSubKriteriaPage() {
                                  <TableRow className="bg-blue-50/50">
                                     <TableCell className="font-bold text-center border text-slate-600 text-xs">Jumlah</TableCell>
                                     {subKriteria.map((kolom) => (
-                                       <TableCell key={`sum-norm-${kolom.kode}`} className="font-bold text-center border text-blue-800 font-mono text-sm">1.0000</TableCell>
+                                       <TableCell key={`sum-norm-${kolom.kode}`} className="font-bold text-center border text-blue-800 font-mono text-sm">1</TableCell>
                                     ))}
                                  </TableRow>
                               </TableBody>
@@ -532,7 +564,7 @@ export default function PerbandinganSubKriteriaPage() {
                                  })}
                                  <TableRow className="bg-emerald-50/50">
                                     <TableCell colSpan={subKriteria.length + 3} className="font-bold text-right border text-slate-600 text-xs pr-4">Total Penjumlahan Bobot =</TableCell>
-                                    <TableCell className="font-bold text-center border text-emerald-800 font-mono text-sm">1.0000</TableCell>
+                                    <TableCell className="font-bold text-center border text-emerald-800 font-mono text-sm">1</TableCell>
                                  </TableRow>
                               </TableBody>
                            </Table>
@@ -567,7 +599,6 @@ export default function PerbandinganSubKriteriaPage() {
                                     <TableRow className="bg-slate-100">
                                        <TableHead className="font-bold text-slate-700 border text-center align-middle" rowSpan={2}>Kode</TableHead>
                                        <TableHead className="font-bold text-slate-700 border text-center" colSpan={subKriteria.length}>1. Proses Perkalian: Matriks Awal × Eigenvector (W<sub>j</sub>)</TableHead>
-                                       {/* PERBAIKAN 1: Melebarkan min-width kolom WSV agar angka tidak mendesak tabel */}
                                        <TableHead className="font-bold text-purple-700 border text-center align-middle bg-purple-50 min-w-35" rowSpan={2}>2. Total Baris<br />(WSV)</TableHead>
                                        <TableHead className="font-bold text-emerald-700 border text-center align-middle bg-emerald-50 w-24" rowSpan={2}>Eigen Baris<br />(W<sub>i</sub>)</TableHead>
                                        <TableHead className="font-bold text-orange-700 border text-center align-middle bg-orange-50 min-w-27.5" rowSpan={2}>3. Rasio<br />(WSV / W<sub>i</sub>)</TableHead>
@@ -593,21 +624,23 @@ export default function PerbandinganSubKriteriaPage() {
 
                                                 return (
                                                    <TableCell key={kolom.kode} className="text-center border text-slate-500 font-mono leading-tight align-middle">
-                                                      <div className="font-bold text-slate-700 text-[11px]">{valAwal.toFixed(2)}</div>
-                                                      <div className="text-[9px] mt-0.5 text-slate-400">× {eigenKolom.toFixed(4)}</div>
+                                                      <div className="font-bold text-slate-700 text-[11px]">{parseFloat(valAwal.toFixed(3))}</div>
+                                                      <div className="text-[10px] mt-0.5 text-slate-400">× {eigenKolom.toFixed(4)}</div>
                                                    </TableCell>
                                                 );
                                              })}
+
                                              <TableCell className="text-center border bg-purple-50/30 align-middle px-3">
                                                 <div className="font-bold text-purple-700 font-mono text-[14px]">
                                                    {wsv[baris.kode]?.toFixed(4)}
                                                 </div>
-                                                {/* PERBAIKAN 2: Menghapus 'Σ=' dan menyesuaikan class agar text wrap dengan rapi */}
                                                 <div className="text-[8.5px] mt-1.5 text-purple-400 font-mono tracking-tighter whitespace-normal wrap-break-word leading-snug">
                                                    {rowProducts.join(' + ')}
                                                 </div>
                                              </TableCell>
+
                                              <TableCell className="font-bold text-center border text-emerald-700 font-mono align-middle bg-emerald-50/30">{ahpResult.bobot[baris.kode]?.toFixed(4)}</TableCell>
+
                                              <TableCell className="text-center border bg-orange-50/30 align-middle px-3">
                                                 <div className="font-bold text-orange-700 font-mono text-[14px]">
                                                    {rasio[baris.kode]?.toFixed(4)}

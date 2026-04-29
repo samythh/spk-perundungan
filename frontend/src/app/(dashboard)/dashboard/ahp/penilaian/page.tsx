@@ -56,29 +56,37 @@ export default function PenilaianAlternatifPage() {
    const fetchAllData = useCallback(async () => {
       setIsLoading(true);
       try {
-         const [resSiswa, resKrit, resSub] = await Promise.all([
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siswa`),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/kriteria`),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subkriteria`)
-         ]);
+         // PERBAIKAN: Menggunakan satu rute terpadu yang sudah kita buat di backend
+         // Rute ini akan mengembalikan data { siswa, kriteria, subKriteria, penilaian } sekaligus
+         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penilaian/data`);
+         const json = await response.json();
 
-         const [dataSiswa, dataKrit, dataSub] = await Promise.all([
-            resSiswa.json(), resKrit.json(), resSub.json()
-         ]);
+         if (json.success) {
+            setSiswa(json.data.siswa);
+            setKriteria(json.data.kriteria);
+            setSubKriteria(json.data.subKriteria);
 
-         if (dataSiswa.success) setSiswa(dataSiswa.data);
-         if (dataKrit.success) setKriteria(dataKrit.data);
-         if (dataSub.success) setSubKriteria(dataSub.data);
-
-         const initialPenilaian: PenilaianRecord = {};
-         dataSiswa.data.forEach((s: Siswa) => {
-            initialPenilaian[s.id] = {};
-            dataKrit.data.forEach((k: Kriteria) => {
-               initialPenilaian[s.id][k.kode] = "";
+            // 1. Buat kerangka penilaian kosong untuk semua siswa
+            const loadedPenilaian: PenilaianRecord = {};
+            json.data.siswa.forEach((s: Siswa) => {
+               loadedPenilaian[s.id] = {};
+               json.data.kriteria.forEach((k: Kriteria) => {
+                  loadedPenilaian[s.id][k.kode] = ""; // Default dikosongkan
+               });
             });
-         });
-         setPenilaian(initialPenilaian);
 
+            // 2. PERBAIKAN: Jika ada riwayat penilaian di database, isikan ke kerangka!
+            if (json.data.penilaian && json.data.penilaian.length > 0) {
+               json.data.penilaian.forEach((p: { siswa_id: number; kriteria_kode: string; subkriteria_kode: string }) => {
+                  // Pastikan siswanya masih ada di data master
+                  if (loadedPenilaian[p.siswa_id]) {
+                     loadedPenilaian[p.siswa_id][p.kriteria_kode] = p.subkriteria_kode;
+                  }
+               });
+            }
+
+            setPenilaian(loadedPenilaian);
+         }
       } catch (error) {
          console.error("Gagal memuat data master:", error);
          showToast("Gagal terhubung ke database.", "error");
@@ -181,16 +189,13 @@ export default function PenilaianAlternatifPage() {
          )}
 
          <div className="border rounded-2xl bg-white shadow-sm overflow-hidden">
-            {/* PERBAIKAN W-FULL: Memastikan kontainer bisa di-scroll tapi proporsinya pas */}
             <div className="overflow-x-auto w-full">
                <Table className="w-full min-w-max border-collapse">
                   <TableHeader className="bg-slate-50 border-b-2 border-slate-200">
                      <TableRow>
                         <TableHead className="font-bold text-slate-800 border-r w-10 text-center">No</TableHead>
-                        {/* PERBAIKAN: Kolom nama di-set min-width-nya agar tidak mendesak C1-C5 */}
                         <TableHead className="font-bold text-slate-800 border-r min-w-50">Nama Alternatif (Siswa)</TableHead>
                         {kriteria.map(k => (
-                           // PERBAIKAN: min-w diturunkan menjadi 120px agar C5 tidak terpotong
                            <TableHead key={k.kode} className="font-bold text-center text-slate-700 border-r min-w-30 max-w-32.5">
                               <div className="text-primary text-sm">{k.kode}</div>
                               <div className="text-[11px] font-normal text-slate-500 truncate px-1" title={k.nama}>{k.nama}</div>
@@ -224,7 +229,6 @@ export default function PenilaianAlternatifPage() {
                                  const selectedVal = penilaian[s.id]?.[k.kode] || "";
                                  return (
                                     <TableCell key={`${s.id}-${k.kode}`} className="p-2 border-r text-center align-middle">
-                                       {/* PERBAIKAN: Warna kuning dibuang. Diganti Slate untuk kosong, Emerald untuk terisi */}
                                        <select
                                           className={`w-full py-2 px-1 text-[13px] border rounded-md focus:ring-2 focus:ring-primary focus:outline-none shadow-sm cursor-pointer transition-all
                                              ${selectedVal === ""
