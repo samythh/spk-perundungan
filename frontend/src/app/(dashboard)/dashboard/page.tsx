@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { 
-   Users, ListChecks, ShieldAlert, // PERBAIKAN: Menghapus 'Activity' yang sudah tidak dipakai
-   BarChart3, PieChart, TrendingUp, AlertTriangle, 
-   BrainCircuit, Sparkles, UserCheck, Database // PERBAIKAN: Menambahkan 'Database'
+import {
+   Users, ListChecks, ShieldAlert,
+   BarChart3, PieChart, TrendingUp, AlertTriangle,
+   BrainCircuit, Sparkles, UserCheck, Database
 } from "lucide-react";
 
 interface Siswa {
@@ -34,7 +34,7 @@ export default function DashboardPage() {
       try {
          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/penilaian/data`);
          if (!res.ok) throw new Error("Gagal mengambil data");
-         
+
          const json = await res.json();
 
          if (json.success) {
@@ -63,21 +63,21 @@ export default function DashboardPage() {
 
    // Variabel Statistik
    const top5Siswa = siswaDinilai.slice(0, 5);
-   const jumlahRisikoTinggi = siswaDinilai.filter(s => s.kategori?.includes("Parah")).length;
+   const jumlahRisikoTinggi = siswaDinilai.filter(s => s.kategori?.includes("Parah") || s.kategori?.includes("Tinggi")).length;
    const persenSelesai = siswaSemua.length > 0 ? (siswaDinilai.length / siswaSemua.length) * 100 : 0;
 
    // Fungsi utilitas warna bar chart
    const getBarColor = (kategori: string | null) => {
-      if (kategori?.includes("Sangat Parah")) return "from-red-500 to-rose-600 shadow-red-200";
-      if (kategori?.includes("Parah")) return "from-orange-400 to-orange-500 shadow-orange-200";
+      if (kategori?.includes("Sangat Parah") || kategori?.includes("Sangat Tinggi")) return "from-red-500 to-rose-600 shadow-red-200";
+      if (kategori?.includes("Parah") || kategori?.includes("Tinggi")) return "from-orange-400 to-orange-500 shadow-orange-200";
       if (kategori?.includes("Sedang")) return "from-amber-400 to-amber-500 shadow-amber-200";
       return "from-blue-500 to-indigo-600 shadow-blue-200";
    };
 
    // Fungsi utilitas lencana tabel
    const getBadgeStyle = (kategori: string | null) => {
-      if (kategori?.includes("Sangat Parah")) return "bg-red-100 text-red-700 border-red-200";
-      if (kategori?.includes("Parah")) return "bg-orange-100 text-orange-700 border-orange-200";
+      if (kategori?.includes("Sangat Parah") || kategori?.includes("Sangat Tinggi")) return "bg-red-100 text-red-700 border-red-200";
+      if (kategori?.includes("Parah") || kategori?.includes("Tinggi")) return "bg-orange-100 text-orange-700 border-orange-200";
       if (kategori?.includes("Sedang")) return "bg-amber-100 text-amber-700 border-amber-200";
       if (kategori?.includes("Rentan")) return "bg-blue-100 text-blue-700 border-blue-200";
       return "bg-emerald-100 text-emerald-700 border-emerald-200";
@@ -107,9 +107,11 @@ export default function DashboardPage() {
                <div className="flex items-center gap-2 mb-2 text-blue-300 font-medium text-sm tracking-widest uppercase">
                   <Sparkles size={16} /> Sistem Pendukung Keputusan
                </div>
-               <h1 className="text-3xl font-extrabold tracking-tight">Dashboard Eksekutif</h1>
+               <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
+
+               {/* PERBAIKAN 1: Teks header dipersingkat dan dipertegas */}
                <p className="text-slate-300 mt-2 max-w-xl text-sm leading-relaxed">
-                  Pemantauan waktu nyata kerentanan perundungan siswa SMA Negeri 2 Padang berdasarkan analisis <strong>AHP Absolut</strong>.
+                  Pusat kendali dan analisis kerentanan siswa SMA Negeri 2 Padang berbasis metode <strong>AHP Absolut</strong>.
                </p>
             </div>
          </div>
@@ -163,7 +165,7 @@ export default function DashboardPage() {
 
          {/* AREA GRAFIK (MIDDLE ROW) */}
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {/* GRAFIK BAR - TOP 5 */}
             <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
                <div className="flex justify-between items-center mb-6">
@@ -178,7 +180,7 @@ export default function DashboardPage() {
 
                <div className="grow flex items-end justify-around gap-4 mt-4 h-56 pt-6 border-b border-slate-100/80 pb-2 relative">
                   <div className="absolute top-1/2 w-full border-t border-dashed border-slate-200 z-0"></div>
-                  
+
                   {top5Siswa.length === 0 ? (
                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm z-10">Belum ada data evaluasi.</div>
                   ) : top5Siswa.map((s, idx) => {
@@ -190,7 +192,7 @@ export default function DashboardPage() {
                            <div className="text-[12px] font-black text-slate-700 mb-2 opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
                               {(s.nilai_akhir || 0).toFixed(4)}
                            </div>
-                           
+
                            <div className="w-full max-w-15 h-full flex items-end relative">
                               <div
                                  className={`w-full rounded-t-xl bg-linear-to-t ${gradientColor} shadow-lg transition-all duration-1000 ease-out relative overflow-hidden`}
@@ -199,11 +201,15 @@ export default function DashboardPage() {
                                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                               </div>
                            </div>
-                           
-                           <div className="mt-3 text-xs font-bold text-slate-700 text-center truncate w-full px-1" title={s.nama}>
-                              {s.nama.split(' ')[0]}
+
+                           {/* PERBAIKAN 2: Memaksa teks nama siswa terpotong dengan 'truncate whitespace-nowrap' jika kepanjangan, dan margin bawah agar tidak menabrak Rank */}
+                           <div className="mt-3 mb-1 text-xs font-bold text-slate-700 text-center w-full px-1 truncate whitespace-nowrap" title={s.nama}>
+                              {s.nama.split(' ')[0]} {/* Mengambil nama depan saja */}
                            </div>
-                           <div className="text-[10px] text-slate-400 font-mono mt-0.5 bg-slate-100 px-2 py-0.5 rounded-full">Rank {idx + 1}</div>
+
+                           <div className="text-[10px] text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
+                              Rank {idx + 1}
+                           </div>
                         </div>
                      );
                   })}
@@ -252,7 +258,7 @@ export default function DashboardPage() {
                   </div>
                   <a href="/dashboard/ahp/hasil" className="text-xs font-bold text-primary hover:text-blue-800 hover:underline">Lihat Laporan Lengkap &rarr;</a>
                </div>
-               
+
                <div className="overflow-x-auto p-2 grow">
                   <table className="w-full text-sm text-left">
                      <thead>
@@ -296,7 +302,7 @@ export default function DashboardPage() {
             {/* KOTAK INSIGHT / KESIMPULAN CERDAS */}
             <div className="bg-linear-to-br from-blue-50 to-indigo-50/50 p-6 rounded-2xl border border-blue-100 shadow-sm flex flex-col relative overflow-hidden">
                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
-               
+
                <div className="flex items-center gap-2 mb-4 border-b border-blue-200/50 pb-4 relative z-10">
                   <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
                      <AlertTriangle size={18} />
@@ -315,13 +321,13 @@ export default function DashboardPage() {
                         <p className="bg-white/60 p-3 rounded-xl border border-white">
                            Terdapat <strong className="text-red-600 text-lg">{jumlahRisikoTinggi} siswa</strong> yang saat ini masuk dalam radar <strong>Risiko Tinggi & Parah</strong>.
                         </p>
-                        
+
                         {top5Siswa.length > 0 && (
                            <p className="bg-white/60 p-3 rounded-xl border border-white">
-                              Prioritas pemanggilan utama jatuh kepada <strong>{top5Siswa[0].nama}</strong> dengan tingkat kerentanan <strong>{(top5Siswa[0].nilai_akhir || 0).toFixed(4)}</strong>. 
+                              Prioritas pemanggilan utama jatuh kepada <strong>{top5Siswa[0].nama}</strong> dengan tingkat kerentanan <strong>{(top5Siswa[0].nilai_akhir || 0).toFixed(4)}</strong>.
                            </p>
                         )}
-                        
+
                         <div className="mt-auto pt-2">
                            <div className="p-3 bg-slate-800 text-white rounded-xl shadow-md border border-slate-700">
                               <p className="font-bold text-xs text-blue-300 uppercase tracking-wider mb-1">Tindakan Disarankan</p>
